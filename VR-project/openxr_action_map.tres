@@ -1,0 +1,206 @@
+[gd_resource type="OpenXRActionMap" load_steps=40 format=3]
+
+; ============================================================================
+;  REDUCED OPENXR ACTION MAP  --  Architectural Fix 5.4
+; ============================================================================
+;  A stock VR controller exposes ~10 inputs. For a first-time senior user that
+;  is overwhelming and, worse, an accidental face-button press can interrupt a
+;  timed balance trial.
+;
+;  This action map therefore declares ONLY:
+;      default       (pose) - controller position, used to draw the hand
+;      aim           (pose) - where the controller points, used for the ray
+;      trigger_click (bool) - FLAG A HAZARD.  Nothing else.
+;      grip_click    (bool) - GRAB a handrail / the balance orb.  Nothing else.
+;
+;  A/B/X/Y, menu, thumbstick and trackpad are intentionally ABSENT. An action
+;  that is not declared here is never delivered to the game, so those buttons
+;  are dead at the OpenXR runtime level -- not merely ignored in script.
+;
+;  FORMAT NOTE: since Godot 4.4 each OpenXRIPBinding holds a SINGLE
+;  `binding_path`, which is why left and right hands are listed separately
+;  rather than as one PackedStringArray.
+;
+;  IF THIS FILE FAILS TO LOAD in your Godot version, do not hand-edit it: open
+;  Project Settings > OpenXR > Action Map, check the four actions above are
+;  listed, and press Save. Godot rewrites this file in its own exact format.
+; ============================================================================
+
+[sub_resource type="OpenXRAction" id="Action_default_pose"]
+resource_name = "default"
+localized_name = "Controller pose"
+action_type = 3
+toplevel_paths = PackedStringArray("/user/hand/left", "/user/hand/right")
+
+[sub_resource type="OpenXRAction" id="Action_aim_pose"]
+resource_name = "aim"
+localized_name = "Aim pose"
+action_type = 3
+toplevel_paths = PackedStringArray("/user/hand/left", "/user/hand/right")
+
+[sub_resource type="OpenXRAction" id="Action_trigger_click"]
+resource_name = "trigger_click"
+localized_name = "Flag hazard"
+action_type = 0
+toplevel_paths = PackedStringArray("/user/hand/left", "/user/hand/right")
+
+[sub_resource type="OpenXRAction" id="Action_grip_click"]
+resource_name = "grip_click"
+localized_name = "Hold handrail"
+action_type = 0
+toplevel_paths = PackedStringArray("/user/hand/left", "/user/hand/right")
+
+[sub_resource type="OpenXRActionSet" id="ActionSet_main"]
+resource_name = "godot"
+localized_name = "Fall Prevention Trainer"
+priority = 0
+actions = [SubResource("Action_default_pose"), SubResource("Action_aim_pose"), SubResource("Action_trigger_click"), SubResource("Action_grip_click")]
+
+; --- Khronos simple controller (universal fallback) -------------------------
+; This profile has no squeeze input at all, so only the flag action is bound.
+
+[sub_resource type="OpenXRIPBinding" id="B_simple_pose_l"]
+action = SubResource("Action_default_pose")
+binding_path = "/user/hand/left/input/grip/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_simple_pose_r"]
+action = SubResource("Action_default_pose")
+binding_path = "/user/hand/right/input/grip/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_simple_aim_l"]
+action = SubResource("Action_aim_pose")
+binding_path = "/user/hand/left/input/aim/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_simple_aim_r"]
+action = SubResource("Action_aim_pose")
+binding_path = "/user/hand/right/input/aim/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_simple_trig_l"]
+action = SubResource("Action_trigger_click")
+binding_path = "/user/hand/left/input/select/click"
+
+[sub_resource type="OpenXRIPBinding" id="B_simple_trig_r"]
+action = SubResource("Action_trigger_click")
+binding_path = "/user/hand/right/input/select/click"
+
+[sub_resource type="OpenXRInteractionProfile" id="IP_simple"]
+interaction_profile_path = "/interaction_profiles/khr/simple_controller"
+bindings = [SubResource("B_simple_pose_l"), SubResource("B_simple_pose_r"), SubResource("B_simple_aim_l"), SubResource("B_simple_aim_r"), SubResource("B_simple_trig_l"), SubResource("B_simple_trig_r")]
+
+; --- Valve Index ------------------------------------------------------------
+
+[sub_resource type="OpenXRIPBinding" id="B_index_pose_l"]
+action = SubResource("Action_default_pose")
+binding_path = "/user/hand/left/input/grip/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_index_pose_r"]
+action = SubResource("Action_default_pose")
+binding_path = "/user/hand/right/input/grip/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_index_aim_l"]
+action = SubResource("Action_aim_pose")
+binding_path = "/user/hand/left/input/aim/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_index_aim_r"]
+action = SubResource("Action_aim_pose")
+binding_path = "/user/hand/right/input/aim/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_index_trig_l"]
+action = SubResource("Action_trigger_click")
+binding_path = "/user/hand/left/input/trigger/click"
+
+[sub_resource type="OpenXRIPBinding" id="B_index_trig_r"]
+action = SubResource("Action_trigger_click")
+binding_path = "/user/hand/right/input/trigger/click"
+
+[sub_resource type="OpenXRIPBinding" id="B_index_grip_l"]
+action = SubResource("Action_grip_click")
+binding_path = "/user/hand/left/input/squeeze/value"
+
+[sub_resource type="OpenXRIPBinding" id="B_index_grip_r"]
+action = SubResource("Action_grip_click")
+binding_path = "/user/hand/right/input/squeeze/value"
+
+[sub_resource type="OpenXRInteractionProfile" id="IP_index"]
+interaction_profile_path = "/interaction_profiles/valve/index_controller"
+bindings = [SubResource("B_index_pose_l"), SubResource("B_index_pose_r"), SubResource("B_index_aim_l"), SubResource("B_index_aim_r"), SubResource("B_index_trig_l"), SubResource("B_index_trig_r"), SubResource("B_index_grip_l"), SubResource("B_index_grip_r")]
+
+; --- Oculus / Meta Touch (Quest via Link, Rift) -----------------------------
+
+[sub_resource type="OpenXRIPBinding" id="B_touch_pose_l"]
+action = SubResource("Action_default_pose")
+binding_path = "/user/hand/left/input/grip/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_touch_pose_r"]
+action = SubResource("Action_default_pose")
+binding_path = "/user/hand/right/input/grip/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_touch_aim_l"]
+action = SubResource("Action_aim_pose")
+binding_path = "/user/hand/left/input/aim/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_touch_aim_r"]
+action = SubResource("Action_aim_pose")
+binding_path = "/user/hand/right/input/aim/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_touch_trig_l"]
+action = SubResource("Action_trigger_click")
+binding_path = "/user/hand/left/input/trigger/value"
+
+[sub_resource type="OpenXRIPBinding" id="B_touch_trig_r"]
+action = SubResource("Action_trigger_click")
+binding_path = "/user/hand/right/input/trigger/value"
+
+[sub_resource type="OpenXRIPBinding" id="B_touch_grip_l"]
+action = SubResource("Action_grip_click")
+binding_path = "/user/hand/left/input/squeeze/value"
+
+[sub_resource type="OpenXRIPBinding" id="B_touch_grip_r"]
+action = SubResource("Action_grip_click")
+binding_path = "/user/hand/right/input/squeeze/value"
+
+[sub_resource type="OpenXRInteractionProfile" id="IP_touch"]
+interaction_profile_path = "/interaction_profiles/oculus/touch_controller"
+bindings = [SubResource("B_touch_pose_l"), SubResource("B_touch_pose_r"), SubResource("B_touch_aim_l"), SubResource("B_touch_aim_r"), SubResource("B_touch_trig_l"), SubResource("B_touch_trig_r"), SubResource("B_touch_grip_l"), SubResource("B_touch_grip_r")]
+
+; --- HTC Vive wand ----------------------------------------------------------
+
+[sub_resource type="OpenXRIPBinding" id="B_vive_pose_l"]
+action = SubResource("Action_default_pose")
+binding_path = "/user/hand/left/input/grip/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_vive_pose_r"]
+action = SubResource("Action_default_pose")
+binding_path = "/user/hand/right/input/grip/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_vive_aim_l"]
+action = SubResource("Action_aim_pose")
+binding_path = "/user/hand/left/input/aim/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_vive_aim_r"]
+action = SubResource("Action_aim_pose")
+binding_path = "/user/hand/right/input/aim/pose"
+
+[sub_resource type="OpenXRIPBinding" id="B_vive_trig_l"]
+action = SubResource("Action_trigger_click")
+binding_path = "/user/hand/left/input/trigger/click"
+
+[sub_resource type="OpenXRIPBinding" id="B_vive_trig_r"]
+action = SubResource("Action_trigger_click")
+binding_path = "/user/hand/right/input/trigger/click"
+
+[sub_resource type="OpenXRIPBinding" id="B_vive_grip_l"]
+action = SubResource("Action_grip_click")
+binding_path = "/user/hand/left/input/squeeze/click"
+
+[sub_resource type="OpenXRIPBinding" id="B_vive_grip_r"]
+action = SubResource("Action_grip_click")
+binding_path = "/user/hand/right/input/squeeze/click"
+
+[sub_resource type="OpenXRInteractionProfile" id="IP_vive"]
+interaction_profile_path = "/interaction_profiles/htc/vive_controller"
+bindings = [SubResource("B_vive_pose_l"), SubResource("B_vive_pose_r"), SubResource("B_vive_aim_l"), SubResource("B_vive_aim_r"), SubResource("B_vive_trig_l"), SubResource("B_vive_trig_r"), SubResource("B_vive_grip_l"), SubResource("B_vive_grip_r")]
+
+[resource]
+action_sets = [SubResource("ActionSet_main")]
+interaction_profiles = [SubResource("IP_simple"), SubResource("IP_index"), SubResource("IP_touch"), SubResource("IP_vive")]

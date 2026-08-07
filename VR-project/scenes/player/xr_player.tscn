@@ -1,0 +1,69 @@
+[gd_scene load_steps=9 format=3 uid="uid://cvrfp0player01"]
+
+[ext_resource type="Script" path="res://scripts/player/xr_player.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/player/comfort_vignette.gd" id="2_vignette"]
+[ext_resource type="Script" path="res://scripts/player/seated_mode.gd" id="3_seated"]
+[ext_resource type="Script" path="res://scripts/player/teleporter.gd" id="4_teleport"]
+[ext_resource type="Script" path="res://scripts/player/grab_controller.gd" id="5_grab"]
+[ext_resource type="Script" path="res://scripts/player/hazard_pointer.gd" id="6_pointer"]
+[ext_resource type="Script" path="res://scripts/player/flat_debug_rig.gd" id="7_flat"]
+
+[sub_resource type="SphereShape3D" id="Shape_probe"]
+radius = 0.24
+
+[node name="XRPlayer" type="XROrigin3D" groups=["xr_player"]]
+script = ExtResource("1_player")
+camera_path = NodePath("XRCamera3D")
+probe_path = NodePath("PlayerProbe")
+left_controller_path = NodePath("LeftHand")
+right_controller_path = NodePath("RightHand")
+flat_rig_path = NodePath("FlatDebugRig")
+left_handed = false
+
+[node name="XRCamera3D" type="XRCamera3D" parent="."]
+
+[node name="ComfortVignette" type="MeshInstance3D" parent="XRCamera3D"]
+script = ExtResource("2_vignette")
+
+[node name="SeatedMode" type="Node" parent="."]
+script = ExtResource("3_seated")
+
+[node name="PlayerProbe" type="Area3D" parent="." groups=["player_probe"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+collision_layer = 2
+collision_mask = 0
+monitorable = true
+monitoring = false
+
+[node name="ProbeShape" type="CollisionShape3D" parent="PlayerProbe"]
+shape = SubResource("Shape_probe")
+
+[node name="LeftHand" type="XRController3D" parent="."]
+tracker = &"left_hand"
+pose = &"aim"
+
+[node name="Teleporter" type="Node3D" parent="LeftHand"]
+script = ExtResource("4_teleport")
+
+[node name="GrabController" type="Node3D" parent="LeftHand"]
+script = ExtResource("5_grab")
+
+[node name="HazardPointer" type="Node3D" parent="LeftHand"]
+script = ExtResource("6_pointer")
+
+[node name="RightHand" type="XRController3D" parent="."]
+tracker = &"right_hand"
+pose = &"aim"
+
+[node name="Teleporter" type="Node3D" parent="RightHand"]
+script = ExtResource("4_teleport")
+
+[node name="GrabController" type="Node3D" parent="RightHand"]
+script = ExtResource("5_grab")
+
+[node name="HazardPointer" type="Node3D" parent="RightHand"]
+script = ExtResource("6_pointer")
+
+[node name="FlatDebugRig" type="Node3D" parent="."]
+script = ExtResource("7_flat")
+enabled = false

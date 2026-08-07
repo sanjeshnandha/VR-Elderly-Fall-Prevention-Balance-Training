@@ -1,0 +1,156 @@
+[gd_scene load_steps=7 format=3 uid="uid://cvrfp0roombath01"]
+
+[ext_resource type="Script" path="res://scripts/world/room_builder.gd" id="1_room"]
+[ext_resource type="Script" path="res://scripts/world/prop.gd" id="2_prop"]
+[ext_resource type="Script" path="res://scripts/world/hazard.gd" id="3_hazard"]
+[ext_resource type="Script" path="res://scripts/world/grab_rail.gd" id="4_rail"]
+[ext_resource type="Script" path="res://scripts/world/handrail_zone.gd" id="5_zone"]
+[ext_resource type="Script" path="res://scripts/world/slip_zone.gd" id="6_slip"]
+
+; ============================================================================
+;  BATHROOM  --  3.0 x 3.0 m, 2.4 m ceiling. Doorway on the +Z wall.
+;
+;  Hazards: wet tile floor (with a slip trigger), and no grab bar within reach
+;  of the point where you actually step into the bath.
+;
+;  The short bar that IS fitted sits at the far end of the tub -- a very common
+;  real-world installation error, and the reason the "no grab bar" hazard and
+;  the handrail compliance zone can coexist here. There is something to hold;
+;  it is just not where you need it.
+; ============================================================================
+
+[node name="Bathroom" type="Node3D"]
+
+[node name="RoomBuilder" type="Node3D" parent="."]
+script = ExtResource("1_room")
+size = Vector2(3, 3)
+height = 2.4
+floor_color = Color(0.79, 0.82, 0.83, 1)
+wall_color = Color(0.87, 0.9, 0.9, 1)
+openings = Array[Vector4]([Vector4(0, 0, 0.9, 2.03)])
+
+[node name="RoomLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.15, 0)
+light_energy = 1.1
+omni_range = 6.0
+
+; --- Fixtures --------------------------------------------------------------
+
+[node name="Bathtub" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 0.275, -1.05)
+script = ExtResource("2_prop")
+box_size = Vector3(1.7, 0.55, 0.75)
+color = Color(0.95, 0.95, 0.94, 1)
+roughness = 0.25
+
+[node name="TubInner" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 0.48, -1.05)
+script = ExtResource("2_prop")
+box_size = Vector3(1.5, 0.12, 0.6)
+color = Color(0.86, 0.9, 0.92, 1)
+roughness = 0.15
+collide = false
+
+[node name="Sink" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0.42, -1.2)
+script = ExtResource("2_prop")
+box_size = Vector3(0.55, 0.85, 0.4)
+color = Color(0.95, 0.95, 0.94, 1)
+roughness = 0.25
+
+[node name="Toilet" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.15, 0.2, 0.35)
+script = ExtResource("2_prop")
+box_size = Vector3(0.4, 0.4, 0.6)
+color = Color(0.95, 0.95, 0.94, 1)
+roughness = 0.25
+
+[node name="TowelRail" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 1.4, 1.25, 0.9)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.03, 0.6, 0.03)
+color = Color(0.8, 0.8, 0.83, 1)
+metallic = 0.6
+roughness = 0.3
+collide = false
+
+; --- The wet patch ---------------------------------------------------------
+; Low roughness + slight metallic reads as a sheen of standing water without
+; needing a custom shader or a normal map.
+
+[node name="WetFloor" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4, 0.005, 0.05)
+script = ExtResource("2_prop")
+box_size = Vector3(1.7, 0.01, 1.3)
+color = Color(0.72, 0.83, 0.88, 0.75)
+roughness = 0.04
+metallic = 0.35
+collide = false
+
+; --- Hazards ---------------------------------------------------------------
+
+[node name="HazardWetFloor" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4, 0.5, 0.05)
+script = ExtResource("3_hazard")
+hazard_id = "bathroom_wet_floor"
+hazard_name = "Wet tile floor"
+room = "bathroom"
+is_hazard = true
+explanation = "Wet tile is one of the most slippery surfaces in the house. Dry it or wait before stepping on it."
+extents = Vector3(1.7, 1.0, 1.3)
+label_height = 0.7
+
+[node name="SlipZoneWetFloor" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4, 1, 0.05)
+script = ExtResource("6_slip")
+zone_id = "bathroom_wet_floor_slip"
+room = "bathroom"
+linked_hazard_path = NodePath("../HazardWetFloor")
+warning_line = "Careful. This floor is wet and slippery."
+extents = Vector3(1.7, 2, 1.3)
+
+[node name="HazardNoGrabBar" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.05, 0.95, -0.6)
+script = ExtResource("3_hazard")
+hazard_id = "bathroom_no_grab_bar"
+hazard_name = "No grab bar where you step in"
+room = "bathroom"
+is_hazard = true
+explanation = "There is nothing to hold at the end of the bath you actually step into. A grab bar here gives you something solid."
+extents = Vector3(0.8, 1.1, 0.7)
+label_height = 0.75
+
+; A safe object. Flagging it is logged as a false positive, not punished --
+; over-caution is a habit worth encouraging in this population.
+
+[node name="DecoyTowelRail" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 1.25, 0.9)
+script = ExtResource("3_hazard")
+hazard_id = "bathroom_towel_rail"
+hazard_name = "Towel rail"
+room = "bathroom"
+is_hazard = false
+extents = Vector3(0.25, 0.3, 0.7)
+
+; --- The grab bar that IS fitted, and the transfer zone that measures its use
+
+[node name="TubGrabBar" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.05, 0.85, -1.38)
+script = ExtResource("4_rail")
+rail_id = "bathroom_tub_bar"
+span = 0.3
+radius = 0.018
+rail_color = Color(0.85, 0.86, 0.88, 1)
+
+[node name="TubTransferZone" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 1, -0.55)
+script = ExtResource("5_zone")
+zone_id = "bathroom_tub_transfer"
+room = "bathroom"
+description = "Hold the bar while stepping in or out of the bath."
+rail_path = NodePath("../TubGrabBar")
+min_grip_fraction = 0.5
+remind_after_seconds = 2.5
+min_transit_seconds = 1.2
+extents = Vector3(1.9, 2, 1.2)
