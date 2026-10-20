@@ -1,0 +1,384 @@
+[gd_scene load_steps=10 format=3 uid="uid://cvrfp0roomstair01"]
+
+[ext_resource type="Script" path="res://scripts/world/room_builder.gd" id="1_room"]
+[ext_resource type="Script" path="res://scripts/world/staircase.gd" id="2_stairs"]
+[ext_resource type="Script" path="res://scripts/world/prop.gd" id="3_prop"]
+[ext_resource type="Script" path="res://scripts/world/hazard.gd" id="4_hazard"]
+[ext_resource type="Script" path="res://scripts/world/grab_rail.gd" id="5_rail"]
+[ext_resource type="Script" path="res://scripts/world/handrail_zone.gd" id="6_zone"]
+[ext_resource type="Script" path="res://scripts/world/gated_region.gd" id="7_gate"]
+[ext_resource type="Script" path="res://scripts/world/gated_teleport_point.gd" id="8_point"]
+[ext_resource type="Script" path="res://scripts/world/room_zone.gd" id="9_roomzone"]
+
+; ============================================================================
+;  STAIRCASE  --  a domestic half-landing stair enclosure: 1.5 m wide, 5.2 m
+;  long, open to the floor above, with a window at the half-landing and a door
+;  off it.
+;
+;  WHY THIS SHAPE. A staircase is a narrow shaft: that is what makes a handrail
+;  reachable without leaning and what the participant's own staircase at home
+;  looks like. But the TOP has to be somewhere you can stand and turn around
+;  comfortably -- a landing you arrive on at the very edge, with a wall in your
+;  face, is unpleasant in a headset and teaches nothing. So the flight starts
+;  early and the landing is nearly 2 m deep, with two standing positions on it.
+;
+;  LAYOUT (local coordinates; main.tscn places the room at z = +3.9)
+;    z -2.6 .. -1.4   standing space at the foot, doorway in the hallway wall
+;    z -1.4 ..  0.6   the flight: 8 treads, 190 mm rise / 250 mm going
+;    z  0.6 .. 2.54   the half-landing, 1.545 m up: window ahead, door to one
+;                     side, room to turn round in
+;
+;  HEAD HEIGHT AT THE TOP. Standing on the landing puts the eyes at about
+;  3.2 m -- above the 2.4 m hallway wall this room borrows for its north side.
+;  NorthGable fills that wall from 2.4 m to the top of the shaft, or the
+;  participant looks straight over it at the underside of the roof.
+;
+;  WHERE YOU STAND. The teleport discs sit 0.25 m to the WEST of the middle of
+;  the treads -- on the rail side, where a person actually walks up stairs --
+;  so the rail is 0.35 m from the shoulder rather than 0.6 m across the tread.
+;
+;  RAILS. The good rail is mounted on the WEST wall over the tread edge, 0.9 m
+;  above the nosing line, and extends past both ends of the flight as a real
+;  one does, so it can be taken hold of before the first step and let go after
+;  the last. The EAST wall has the brackets and no rail: `stairs_missing_rail`.
+;
+;  Architectural Fix 5.1:
+;    StairGate (GatedRegion)  wraps the flight and landing. Free-aim teleport
+;                             is off inside it, and no destination inside it is
+;                             legal from outside it.
+;    TP_Bottom                the way in, at the foot and just OUTSIDE the
+;                             gate. Coming DOWN onto it still needs the rail.
+;    TP_Step3 / TP_Step6      need the rail held.
+;    TP_Landing               the top of the flight. No rail requirement: it is
+;                             flat ground, and the rail cannot be reached from
+;                             the far end of a landing. Arrives facing up the
+;                             flight, so nobody lands staring down the drop.
+;                             Going back DOWN needs the rail, because TP_Step6
+;                             requires it -- which is the habit that matters.
+;    TP_LandingBack           the far end of the landing, by the window. No
+;                             rail: it is a flat floor, and being able to step
+;                             back from the edge is the point of it.
+;
+;  Each point is selectable only from the one directly below or above, so the
+;  flight is taken one step at a time, up and down. Godot yaw 0 looks along -Z
+;  and this flight ascends along +Z, so ascending arrivals face 180.
+; ============================================================================
+
+[node name="Staircase" type="Node3D"]
+
+[node name="RoomBuilder" type="Node3D" parent="."]
+script = ExtResource("1_room")
+window_sill_height = 2.45
+window_openings = Array[Vector4]([Vector4(0, 0, 1, 1)])
+trim_surface = "paint_satin"
+ceiling_surface = "ceiling_plaster"
+wall_surface = "plaster_wall"
+floor_surface = "oak_floor"
+size = Vector2(1.5, 5.2)
+height = 4.0
+floor_color = Color(0.45, 0.4, 0.36, 1)
+wall_color = Color(0.78, 0.75, 0.7, 1)
+build_ceiling = false
+; Wall 1 (-Z) is the hallway's wall, doorway and all. Building it here as well
+; would put two identical boxes in the same plane and make them flicker.
+build_walls = Array[bool]([true, false, true, true])
+openings = Array[Vector4]([])
+
+; The hallway's wall is only 2.4 m tall and this shaft is 4 m. Without this
+; filler you look straight over it from the landing.
+
+[node name="NorthGable" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, -2.6)
+script = ExtResource("3_prop")
+box_size = Vector3(1.62, 1.6, 0.12)
+surface = "plaster_wall"
+color = Color(0.78, 0.75, 0.7, 1)
+
+[node name="RoomZone" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+script = ExtResource("9_roomzone")
+room = "staircase"
+extents = Vector3(1.5, 4, 5.2)
+
+; Deliberately underpowered and warm-tinted, on the wall above the flight.
+; Stairwell lighting that is merely "a bit dim" is a real and very common
+; hazard; a dark stairwell would be an obvious one, which is a different and
+; much easier task.
+
+[node name="StairLight" type="OmniLight3D" parent="." groups=["room_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4, 2.4, -0.6)
+light_color = Color(1, 0.87, 0.68, 1)
+light_energy = 0.4
+omni_range = 6.0
+
+[node name="LightFixture" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.62, 2.4, -0.6)
+script = ExtResource("3_prop")
+box_size = Vector3(0.12, 0.22, 0.26)
+emission_energy = 1.5
+surface = "lampshade"
+color = Color(0.95, 0.9, 0.75, 1)
+emissive = true
+collide = false
+
+; --- The flight ------------------------------------------------------------
+
+[node name="Flight" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.4)
+script = ExtResource("2_stairs")
+step_count = 8
+rise = 0.19
+going = 0.25
+width = 0.9
+uneven_step_index = 5
+uneven_extra_rise = 0.025
+landing_depth = 1.94
+
+; --- The half-landing: a window ahead and a door to one side ---------------
+; Daylight at the top is not decoration: it is what stops the landing reading
+; as the end of a dark box, and it lights the treads you are about to descend.
+
+[node name="WindowLight" type="OmniLight3D" parent="." groups=["daylight"]]
+omni_attenuation = 1.5
+light_specular = 0.4
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.9, 2.2)
+light_color = Color(1, 0.98, 0.93, 1)
+light_energy = 1.1
+omni_range = 5.0
+
+[node name="UpstairsDoor" type="Node3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.66, 2.56, 1.5)
+script = ExtResource("3_prop")
+box_size = Vector3(0.8, 2.03, 0.05)
+corner_radius = 0.01
+surface = "oak_wood"
+color = Color(0.86, 0.84, 0.79, 1)
+collide = false
+
+[node name="UpstairsDoorHandle" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.61, 2.6, 1.15)
+script = ExtResource("3_prop")
+kind = 2
+box_size = Vector3(0.07, 0.07, 0.07)
+surface = "chrome"
+color = Color(0.72, 0.72, 0.75, 1)
+collide = false
+
+; --- The good rail (west wall) ---------------------------------------------
+; Godot writes a Transform3D ROW BY ROW: the first three numbers are the first
+; ROW of the basis, not the local X axis. The rows below give a local X axis of
+; (0, 0.6051, 0.7962) -- straight up the slope.
+
+[node name="StairRailWest" type="Area3D" parent="."]
+transform = Transform3D(0, 0, -1, 0.6051, 0.7962, 0, 0.7962, -0.6051, 0, -0.6, 1.66, -0.4)
+script = ExtResource("5_rail")
+rail_id = "stair_rail_west"
+span = 1.6
+radius = 0.021
+rail_color = Color(0.72, 0.53, 0.33, 1)
+
+[node name="RailBracketLower" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.645, 1.128, -1.1)
+script = ExtResource("3_prop")
+box_size = Vector3(0.09, 0.03, 0.03)
+surface = "brushed_metal"
+color = Color(0.55, 0.55, 0.58, 1)
+metallic = 0.5
+collide = false
+
+[node name="RailBracketUpper" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.645, 2.192, 0.3)
+script = ExtResource("3_prop")
+box_size = Vector3(0.09, 0.03, 0.03)
+surface = "brushed_metal"
+color = Color(0.55, 0.55, 0.58, 1)
+metallic = 0.5
+collide = false
+
+; --- The broken rail (east wall) -------------------------------------------
+
+[node name="BrokenBracketLower" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.645, 1.128, -1.1)
+script = ExtResource("3_prop")
+box_size = Vector3(0.09, 0.03, 0.03)
+surface = "brushed_metal"
+color = Color(0.55, 0.55, 0.58, 1)
+metallic = 0.5
+collide = false
+
+[node name="BrokenBracketUpper" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.645, 2.192, 0.3)
+script = ExtResource("3_prop")
+box_size = Vector3(0.09, 0.03, 0.03)
+surface = "brushed_metal"
+color = Color(0.55, 0.55, 0.58, 1)
+metallic = 0.5
+collide = false
+
+[node name="HazardMissingRail" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 1.66, -0.4)
+script = ExtResource("4_hazard")
+hazard_id = "stairs_missing_rail"
+hazard_name = "Handrail missing on this side"
+room = "staircase"
+is_hazard = true
+explanation = "Only the brackets are left. Report a broken rail before using the stairs, and use the other side until it is fixed."
+extents = Vector3(0.25, 1.4, 2.2)
+label_height = 0.8
+
+[node name="HazardDimLight" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.57, 2.4, -0.6)
+script = ExtResource("4_hazard")
+hazard_id = "stairs_dim_light"
+hazard_name = "Poor stairwell lighting"
+room = "staircase"
+is_hazard = true
+explanation = "You cannot judge a step you cannot see. Fit a brighter bulb and a switch at both ends of the stairs."
+extents = Vector3(0.32, 0.4, 0.45)
+label_height = 0.4
+
+[node name="HazardUnevenStep" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.62, -0.275)
+script = ExtResource("4_hazard")
+hazard_id = "stairs_uneven_step"
+hazard_name = "Uneven step"
+room = "staircase"
+is_hazard = true
+explanation = "This tread is taller than the others. Look at each step on the way up and down."
+; Floor to tread top, not a band around the nosing. staircase.gd models each
+; tread as a solid block from the floor up, so a volume that covered only the
+; top 150 mm of step 5 contained an eighth of that block -- far less than the
+; fraction hazard.gd needs before it lights a mesh up, which is why the uneven
+; step never glowed. 1.24 m tall catches step 5 whole and still misses its
+; neighbours, which are 250 mm away along the flight.
+extents = Vector3(0.9, 1.24, 0.28)
+label_height = 0.55
+
+; --- Compliance measurement (Core System B) --------------------------------
+; The flight only: standing on the landing or at the foot is not counted as
+; time spent not holding the rail.
+
+[node name="StairTransitZone" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, -0.425)
+script = ExtResource("6_zone")
+zone_id = "staircase_flight"
+room = "staircase"
+description = "Hold the rail for the whole flight, up and down."
+rail_path = NodePath("../StairRailWest")
+min_grip_fraction = 0.6
+remind_after_seconds = 2.5
+min_transit_seconds = 1.5
+extents = Vector3(1.5, 3.6, 2.05)
+
+; --- Architectural Fix 5.1: gated locomotion -------------------------------
+
+[node name="StairGate" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0.545)
+script = ExtResource("7_gate")
+region_name = "staircase"
+enforce = true
+extents = Vector3(1.5, 3.8, 3.99)
+
+[node name="TP_Bottom" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, 0.02, -1.85)
+script = ExtResource("8_point")
+room = "staircase"
+required_rail_path = NodePath("../StairRailWest")
+rail_required_only_when_gated = true
+arrival_yaw_degrees = 180.0
+
+[node name="TP_Step3" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, 0.59, -0.775)
+script = ExtResource("8_point")
+room = "staircase"
+required_rail_path = NodePath("../StairRailWest")
+requires_previous_path = NodePath("../TP_Bottom")
+arrival_yaw_degrees = 180.0
+
+[node name="TP_Step6" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, 1.185, -0.025)
+script = ExtResource("8_point")
+room = "staircase"
+required_rail_path = NodePath("../StairRailWest")
+requires_previous_path = NodePath("../TP_Step3")
+arrival_yaw_degrees = 180.0
+
+[node name="TP_Landing" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, 1.565, 0.95)
+script = ExtResource("8_point")
+room = "staircase"
+requires_previous_path = NodePath("../TP_Step6")
+arrival_yaw_degrees = 180.0
+
+[node name="TP_LandingBack" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.565, 1.8)
+script = ExtResource("8_point")
+room = "staircase"
+requires_previous_path = NodePath("../TP_Landing")
+arrival_yaw_degrees = 180.0
+
+; --- Realism pass: the stairwell ------------------------------------------
+
+[node name="LightBracket" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7, 2.4, -0.6)
+script = ExtResource("3_prop")
+box_size = Vector3(0.05, 0.12, 0.1)
+surface = "brushed_metal"
+collide = false
+
+[node name="SillPlantPot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.27, 2.53, 2.46)
+script = ExtResource("3_prop")
+kind = 1
+box_size = Vector3(0.14, 0.14, 0.14)
+surface = "terracotta"
+collide = false
+
+[node name="SillPlant" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.27, 2.68, 2.46)
+script = ExtResource("3_prop")
+kind = 2
+box_size = Vector3(0.24, 0.22, 0.24)
+surface = "foliage"
+collide = false
+
+[node name="LandingPictureFrame" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.667, 2.25, 1.15)
+script = ExtResource("3_prop")
+box_size = Vector3(0.042, 0.44, 0.36)
+surface = "walnut_wood"
+corner_radius = 0.008
+collide = false
+
+[node name="LandingPictureCanvas" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.652, 2.25, 1.15)
+script = ExtResource("3_prop")
+box_size = Vector3(0.016, 0.35, 0.27)
+surface = "paper"
+tint = Color(0.86, 0.83, 0.78, 1)
+corner_radius = 0.003
+collide = false
+
+[node name="StairSwitchBottom" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.667, 1.05, -2.2)
+script = ExtResource("3_prop")
+box_size = Vector3(0.014, 0.09, 0.09)
+surface = "paint_satin"
+corner_radius = 0.004
+collide = false
+
+[node name="StairSwitchTop" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.667, 2.6, 1.65)
+script = ExtResource("3_prop")
+box_size = Vector3(0.014, 0.09, 0.09)
+surface = "paint_satin"
+corner_radius = 0.004
+collide = false
+
+[node name="StairSmokeAlarm" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.978, 1.4)
+script = ExtResource("3_prop")
+kind = 1
+box_size = Vector3(0.13, 0.044, 0.13)
+surface = "paint_satin"
+collide = false

@@ -1,0 +1,1853 @@
+[gd_scene load_steps=16 format=3 uid="uid://cvrfp0street001"]
+
+[ext_resource type="Script" path="res://scripts/world/prop.gd" id="1_prop"]
+[ext_resource type="Script" path="res://scripts/world/hazard.gd" id="2_hazard"]
+[ext_resource type="Script" path="res://scripts/world/slip_zone.gd" id="3_slip"]
+[ext_resource type="Script" path="res://scripts/world/room_zone.gd" id="4_roomzone"]
+[ext_resource type="Script" path="res://scripts/world/street_car.gd" id="5_car"]
+[ext_resource type="Script" path="res://scripts/world/street_crossing.gd" id="6_crossing"]
+[ext_resource type="Script" path="res://scripts/world/traffic_signal.gd" id="7_signal"]
+[ext_resource type="Script" path="res://scripts/world/signal_post.gd" id="8_post"]
+[ext_resource type="Script" path="res://scripts/world/room_route.gd" id="9_route"]
+[ext_resource type="Script" path="res://scripts/world/route_marker.gd" id="10_marker"]
+[ext_resource type="Script" path="res://scripts/world/crossing_practice.gd" id="11_practice"]
+[ext_resource type="Script" path="res://scripts/world/drain_gully.gd" id="12_gully"]
+[ext_resource type="Script" path="res://scripts/world/leaf_litter.gd" id="13_leaves"]
+[ext_resource type="Script" path="res://scripts/world/street_tree.gd" id="14_tree"]
+[ext_resource type="Script" path="res://scripts/world/pedestrian.gd" id="15_person"]
+
+; ============================================================================
+;  STREET  --  the outdoor half of the session: front garden, pavement, road
+;  with a marked crossing, and the far pavement with a postbox to walk to.
+;
+;  WHY IT IS HERE. Falls outdoors are not mostly about the road surface, they
+;  are about the approach: stepping down an unfamiliar kerb, being pushed off
+;  the pavement by a bin, and crossing without looking. The house teaches
+;  hazard recognition; the street teaches the walk.
+;
+;  LAYOUT (metres, y = 0 is the house floor; outside is one 140 mm step down)
+;    z 1.36 ..  7.20   front garden, with a 1 m path from the front door
+;    z 7.20 ..  9.20   near pavement, kerb at its far edge
+;    z 9.30 .. 15.10   the road, one lane each way, crossing at x = 0
+;    z 15.20 .. 17.20  far pavement, postbox and bench
+;    z 17.40 ..        neighbouring houses, for context only
+;
+;  The crossing is DROPPED at x -1.8 .. 1.8 (no kerb there) and marked with
+;  bars. Everything walkable -- path, pavements, road -- is in the "walkable"
+;  group, so the teleport arc accepts it; grass and walls are not, which keeps
+;  the participant on the route without a single invisible wall.
+;
+;  THE ROAD IS DELIBERATELY WALKABLE. A training tool that makes crossing badly
+;  impossible cannot measure whether the participant would have. StreetCrossing
+;  scores every step into the road instead, and says the one useful thing at the
+;  moment it matters.
+;
+;  The car (StreetCar) travels at 3.5 m/s with an 11 s gap between runs, never
+;  collides, and eases to a stop for anyone already in the road.
+; ============================================================================
+
+[node name="Street" type="Node3D"]
+
+[node name="RoomZone" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 10.2)
+script = ExtResource("4_roomzone")
+room = "street"
+extents = Vector3(54, 4, 17.6)
+
+; --- Ground ---------------------------------------------------------------
+; Grass is NOT walkable: the participant follows the path, with no invisible
+; walls and nothing to trip the eye.
+
+; The kitchen wing (x -8.2 .. -4.0, z 1.3 .. 5.1) now stands on part of the old
+; front lawn, so the lawn is the ground AROUND it.
+
+[node name="LawnWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.15, -0.21, 4.28)
+script = ExtResource("1_prop")
+box_size = Vector3(3.7, 0.12, 5.84)
+surface = "grass"
+color = Color(0.42, 0.5, 0.31, 1)
+roughness = 1.0
+
+[node name="LawnBetweenKitchenAndPath" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.6, -0.21, 4.28)
+script = ExtResource("1_prop")
+box_size = Vector3(0.8, 0.12, 5.84)
+surface = "grass"
+color = Color(0.42, 0.5, 0.31, 1)
+roughness = 1.0
+
+[node name="LawnSouthOfKitchen" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.05, -0.21, 6.15)
+script = ExtResource("1_prop")
+box_size = Vector3(5.5, 0.12, 2.1)
+surface = "grass"
+color = Color(0.42, 0.5, 0.31, 1)
+roughness = 1.0
+
+[node name="LawnEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.48, -0.21, 4.28)
+script = ExtResource("1_prop")
+box_size = Vector3(11.04, 0.12, 5.84)
+surface = "grass"
+color = Color(0.42, 0.5, 0.31, 1)
+roughness = 1.0
+
+[node name="LawnBehindStairs" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.21, 6.95)
+script = ExtResource("1_prop")
+box_size = Vector3(1.9, 0.12, 0.5)
+surface = "grass"
+color = Color(0.42, 0.5, 0.31, 1)
+roughness = 1.0
+
+; The path is laid in four pieces rather than one slab, because the gully in it
+; is a real HOLE: FrontPath runs from the door up to the gully, FrontPathWest
+; and FrontPathEast are the strips either side of it, and FrontPathBeyond
+; carries on to the gate. A dark box on top of an unbroken slab is a stain, not
+; an opening -- which is exactly how the first version of this read.
+;
+;   paving surface y -0.140      gap for the gully   x -2.73 .. -2.27
+;   1.4 m wide overall                               z  5.730 ..  6.080
+;   0.47 m of clear paving each side of the hole
+
+[node name="FrontPath" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, -0.19, 3.545)
+script = ExtResource("1_prop")
+box_size = Vector3(1.4, 0.1, 4.37)
+surface = "paving"
+color = Color(0.68, 0.66, 0.62, 1)
+roughness = 0.9
+walkable = true
+
+[node name="FrontPathWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.965, -0.19, 5.905)
+script = ExtResource("1_prop")
+box_size = Vector3(0.47, 0.1, 0.35)
+surface = "paving"
+color = Color(0.68, 0.66, 0.62, 1)
+roughness = 0.9
+walkable = true
+
+[node name="FrontPathEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.035, -0.19, 5.905)
+script = ExtResource("1_prop")
+box_size = Vector3(0.47, 0.1, 0.35)
+surface = "paving"
+color = Color(0.68, 0.66, 0.62, 1)
+roughness = 0.9
+walkable = true
+
+[node name="FrontPathBeyond" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, -0.19, 6.64)
+script = ExtResource("1_prop")
+box_size = Vector3(1.4, 0.1, 1.12)
+surface = "paving"
+color = Color(0.68, 0.66, 0.62, 1)
+roughness = 0.9
+walkable = true
+
+[node name="Pavement" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.19, 8.2)
+script = ExtResource("1_prop")
+box_size = Vector3(52, 0.1, 2.0)
+surface = "paving"
+color = Color(0.72, 0.71, 0.68, 1)
+roughness = 0.9
+walkable = true
+
+[node name="FarPavement" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.19, 17.5)
+script = ExtResource("1_prop")
+box_size = Vector3(52, 0.1, 2.4)
+surface = "paving"
+color = Color(0.72, 0.71, 0.68, 1)
+roughness = 0.9
+walkable = true
+
+[node name="Road" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.33, 12.8)
+script = ExtResource("1_prop")
+box_size = Vector3(52, 0.12, 7.0)
+surface = "asphalt"
+color = Color(0.27, 0.27, 0.29, 1)
+roughness = 0.95
+walkable = true
+
+; Kerbs, with a DROPPED section at the crossing (x -1.8 .. 1.8).
+
+[node name="KerbNearWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, -0.205, 9.25)
+script = ExtResource("1_prop")
+box_size = Vector3(24, 0.13, 0.14)
+surface = "paving"
+color = Color(0.62, 0.61, 0.58, 1)
+
+[node name="KerbNearEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, -0.205, 9.25)
+script = ExtResource("1_prop")
+box_size = Vector3(24, 0.13, 0.14)
+surface = "paving"
+color = Color(0.62, 0.61, 0.58, 1)
+
+[node name="KerbFarWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, -0.205, 16.35)
+script = ExtResource("1_prop")
+box_size = Vector3(24, 0.13, 0.14)
+surface = "paving"
+color = Color(0.62, 0.61, 0.58, 1)
+
+[node name="KerbFarEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, -0.205, 16.35)
+script = ExtResource("1_prop")
+box_size = Vector3(24, 0.13, 0.14)
+surface = "paving"
+color = Color(0.62, 0.61, 0.58, 1)
+
+; --- Road markings (visual only) -------------------------------------------
+
+[node name="CrossingBar1" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.265, 9.95)
+script = ExtResource("1_prop")
+box_size = Vector3(4, 0.02, 0.5)
+color = Color(0.93, 0.93, 0.9, 1)
+collide = false
+
+[node name="CrossingBar2" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.265, 10.9)
+script = ExtResource("1_prop")
+box_size = Vector3(4, 0.02, 0.5)
+color = Color(0.93, 0.93, 0.9, 1)
+collide = false
+
+[node name="CrossingBar3" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.265, 11.85)
+script = ExtResource("1_prop")
+box_size = Vector3(4, 0.02, 0.5)
+color = Color(0.93, 0.93, 0.9, 1)
+collide = false
+
+[node name="CrossingBar4" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.265, 12.8)
+script = ExtResource("1_prop")
+box_size = Vector3(4, 0.02, 0.5)
+color = Color(0.93, 0.93, 0.9, 1)
+collide = false
+
+[node name="CrossingBar5" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.265, 13.75)
+script = ExtResource("1_prop")
+box_size = Vector3(4, 0.02, 0.5)
+color = Color(0.93, 0.93, 0.9, 1)
+collide = false
+
+[node name="CrossingBar6" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.265, 14.7)
+script = ExtResource("1_prop")
+box_size = Vector3(4, 0.02, 0.5)
+color = Color(0.93, 0.93, 0.9, 1)
+collide = false
+
+[node name="CentreLineWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, -0.265, 12.8)
+script = ExtResource("1_prop")
+box_size = Vector3(7, 0.02, 0.12)
+color = Color(0.9, 0.88, 0.8, 1)
+collide = false
+
+[node name="CentreLineEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, -0.265, 12.8)
+script = ExtResource("1_prop")
+box_size = Vector3(7, 0.02, 0.12)
+color = Color(0.9, 0.88, 0.8, 1)
+collide = false
+
+; --- Garden boundary, with a gap for the path ------------------------------
+
+[node name="GardenWallWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.6, 0.11, 7.05)
+script = ExtResource("1_prop")
+box_size = Vector3(8.8, 0.5, 0.16)
+surface = "brick"
+color = Color(0.58, 0.54, 0.5, 1)
+
+[node name="GardenWallEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0.11, 7.05)
+script = ExtResource("1_prop")
+box_size = Vector3(14, 0.5, 0.16)
+surface = "brick"
+color = Color(0.58, 0.54, 0.5, 1)
+
+
+
+; --- People -----------------------------------------------------------------
+; An empty street is a strange place, and it teaches the wrong thing: somebody
+; who only ever sees an empty crossing never sees what people normally do at
+; one. None of them is solid -- a moving obstacle that can corner somebody
+; against a wall is worse than an empty street -- and each of them stops and
+; waits if the participant is in the way. See pedestrian.gd.
+
+; Along the far pavement, back and forth, well clear of everything scored.
+[node name="PersonFarPavement" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, -0.14, 16.9)
+script = ExtResource("15_person")
+path_points = Array[Vector3]([Vector3(-14, -0.14, 16.9), Vector3(14, -0.14, 16.9)])
+speed = 1.15
+pause_seconds = 2.5
+height = 1.72
+coat_color = Color(0.3, 0.36, 0.3, 1)
+trouser_color = Color(0.22, 0.22, 0.26, 1)
+
+; Further along the far pavement, slower, going the other way.
+[node name="PersonFarPavementTwo" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, -0.14, 17.4)
+script = ExtResource("15_person")
+path_points = Array[Vector3]([Vector3(20, -0.14, 17.4), Vector3(-4, -0.14, 17.4)])
+speed = 0.95
+pause_seconds = 4.0
+start_delay = 3.0
+height = 1.61
+coat_color = Color(0.45, 0.3, 0.33, 1)
+trouser_color = Color(0.26, 0.24, 0.2, 1)
+skin_color = Color(0.64, 0.49, 0.38, 1)
+
+; West of the gate, on the near pavement: far enough from the footpath practice
+; (x -2.5 to 6.6) not to walk through it.
+[node name="PersonNearPavement" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19, -0.14, 8.3)
+script = ExtResource("15_person")
+path_points = Array[Vector3]([Vector3(-19, -0.14, 8.3), Vector3(-8.5, -0.14, 8.3)])
+speed = 1.05
+pause_seconds = 3.0
+start_delay = 1.5
+height = 1.68
+coat_color = Color(0.24, 0.28, 0.4, 1)
+
+; The one that matters. Waits at the kerb, crosses ON the green man, inside the
+; markings, 1.2 m clear of the practice rings at x 0 -- so the participant can
+; watch somebody do it properly before doing it themselves.
+[node name="PersonCrossing" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, -0.14, 7.9)
+script = ExtResource("15_person")
+; Pavement, kerb, road, far kerb, far pavement -- and the same in reverse, so
+; the return leg waits for a green man too. The road points are at the road
+; surface (-0.27) and the pavement points at -0.14, so they step down and up.
+path_points = Array[Vector3]([Vector3(1.2, -0.14, 7.9), Vector3(1.2, -0.14, 9.15), Vector3(1.2, -0.27, 9.35), Vector3(1.2, -0.27, 15.05), Vector3(1.2, -0.14, 16.8), Vector3(1.2, -0.14, 15.25), Vector3(1.2, -0.27, 15.05), Vector3(1.2, -0.27, 9.35)])
+speed = 1.0
+pause_seconds = 0.5
+start_delay = 6.0
+wait_for_walk_at = Array[int]([2, 6])
+height = 1.66
+coat_color = Color(0.36, 0.33, 0.28, 1)
+trouser_color = Color(0.18, 0.2, 0.24, 1)
+
+; --- More of the street ----------------------------------------------------
+; Four more houses along the far side and three set back behind them. They are
+; scenery: nothing is scored on them and nobody walks that far. What they do is
+; stop the street ending in a flat line of four houses and a backdrop, which is
+; the thing that reads as a diagram rather than a place -- and at night their
+; lit windows are most of what tells you there is a town here.
+[node name="FarTerraceA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31.5, 2.21, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9.0, 5.0, 6.0)
+surface = "brick"
+color = Color(0.62, 0.48, 0.41, 1)
+
+[node name="FarTerraceARoof" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31.5, 4.91, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9.4, 0.4, 6.4)
+surface = "roof_tile"
+color = Color(0.4, 0.3, 0.28, 1)
+collide = false
+
+[node name="FarTerraceB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 31.5, 2.21, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9.0, 5.0, 6.0)
+surface = "exterior_render"
+color = Color(0.8, 0.77, 0.72, 1)
+
+[node name="FarTerraceBRoof" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 31.5, 4.91, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9.4, 0.4, 6.4)
+surface = "roof_tile"
+color = Color(0.4, 0.3, 0.28, 1)
+collide = false
+
+[node name="FarTerraceC" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -43.5, 2.01, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9.0, 4.6, 6.0)
+surface = "brick"
+color = Color(0.7, 0.6, 0.52, 1)
+
+[node name="FarTerraceCRoof" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -43.5, 4.51, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9.4, 0.4, 6.4)
+surface = "roof_tile"
+color = Color(0.4, 0.3, 0.28, 1)
+collide = false
+
+[node name="FarTerraceD" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 43.5, 2.01, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9.0, 4.6, 6.0)
+surface = "brick"
+color = Color(0.55, 0.45, 0.42, 1)
+
+[node name="FarTerraceDRoof" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 43.5, 4.51, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9.4, 0.4, 6.4)
+surface = "roof_tile"
+color = Color(0.4, 0.3, 0.28, 1)
+collide = false
+
+[node name="BackRowWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25.0, 2.41, 31.5)
+script = ExtResource("1_prop")
+box_size = Vector3(11.0, 5.4, 7.0)
+surface = "exterior_render"
+color = Color(0.72, 0.69, 0.66, 1)
+
+[node name="BackRowWestRoof" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25.0, 5.31, 31.5)
+script = ExtResource("1_prop")
+box_size = Vector3(11.4, 0.4, 7.4)
+surface = "roof_tile"
+color = Color(0.4, 0.3, 0.28, 1)
+collide = false
+
+[node name="BackRowMid" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.0, 2.61, 33.0)
+script = ExtResource("1_prop")
+box_size = Vector3(12.0, 5.8, 7.0)
+surface = "brick"
+color = Color(0.6, 0.5, 0.45, 1)
+
+[node name="BackRowMidRoof" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.0, 5.71, 33.0)
+script = ExtResource("1_prop")
+box_size = Vector3(12.4, 0.4, 7.4)
+surface = "roof_tile"
+color = Color(0.4, 0.3, 0.28, 1)
+collide = false
+
+[node name="BackRowEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.0, 2.41, 31.5)
+script = ExtResource("1_prop")
+box_size = Vector3(11.0, 5.4, 7.0)
+surface = "brick"
+color = Color(0.74, 0.66, 0.58, 1)
+
+[node name="BackRowEastRoof" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.0, 5.31, 31.5)
+script = ExtResource("1_prop")
+box_size = Vector3(11.4, 0.4, 7.4)
+surface = "roof_tile"
+color = Color(0.4, 0.3, 0.28, 1)
+collide = false
+
+; Lit windows on the far terrace. Unshaded emissive panels rather than lights:
+; forty more omnis would cost a great deal and light nothing the participant can
+; reach. These are in `street_light` so they go out in daylight, where a glowing
+; window looks like a mistake.
+[node name="LitWindow1" type="Node3D" parent="." groups=["lit_window"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31.5, 1.4, 18.75)
+script = ExtResource("1_prop")
+box_size = Vector3(1.1, 0.9, 0.06)
+color = Color(1, 0.84, 0.52, 1)
+emissive = true
+emission_energy = 1.6
+corner_radius = 0.0
+collide = false
+
+[node name="LitWindow2" type="Node3D" parent="." groups=["lit_window"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -29.0, 2.9, 18.75)
+script = ExtResource("1_prop")
+box_size = Vector3(1.1, 0.9, 0.06)
+color = Color(1, 0.84, 0.52, 1)
+emissive = true
+emission_energy = 1.6
+corner_radius = 0.0
+collide = false
+
+[node name="LitWindow3" type="Node3D" parent="." groups=["lit_window"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 31.5, 1.4, 18.75)
+script = ExtResource("1_prop")
+box_size = Vector3(1.1, 0.9, 0.06)
+color = Color(1, 0.84, 0.52, 1)
+emissive = true
+emission_energy = 1.6
+corner_radius = 0.0
+collide = false
+
+[node name="LitWindow4" type="Node3D" parent="." groups=["lit_window"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.8, 2.9, 18.75)
+script = ExtResource("1_prop")
+box_size = Vector3(1.1, 0.9, 0.06)
+color = Color(1, 0.84, 0.52, 1)
+emissive = true
+emission_energy = 1.6
+corner_radius = 0.0
+collide = false
+
+[node name="LitWindow5" type="Node3D" parent="." groups=["lit_window"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -43.5, 1.4, 18.75)
+script = ExtResource("1_prop")
+box_size = Vector3(1.1, 0.9, 0.06)
+color = Color(1, 0.84, 0.52, 1)
+emissive = true
+emission_energy = 1.6
+corner_radius = 0.0
+collide = false
+
+[node name="LitWindow6" type="Node3D" parent="." groups=["lit_window"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 43.5, 2.9, 18.75)
+script = ExtResource("1_prop")
+box_size = Vector3(1.1, 0.9, 0.06)
+color = Color(1, 0.84, 0.52, 1)
+emissive = true
+emission_energy = 1.6
+corner_radius = 0.0
+collide = false
+
+[node name="LitWindow7" type="Node3D" parent="." groups=["lit_window"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 2.0, 27.95)
+script = ExtResource("1_prop")
+box_size = Vector3(1.1, 0.9, 0.06)
+color = Color(1, 0.84, 0.52, 1)
+emissive = true
+emission_energy = 1.6
+corner_radius = 0.0
+collide = false
+
+[node name="LitWindow8" type="Node3D" parent="." groups=["lit_window"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 2.0, 27.95)
+script = ExtResource("1_prop")
+box_size = Vector3(1.1, 0.9, 0.06)
+color = Color(1, 0.84, 0.52, 1)
+emissive = true
+emission_energy = 1.6
+corner_radius = 0.0
+collide = false
+
+[node name="LitWindow9" type="Node3D" parent="." groups=["lit_window"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 2.2, 29.45)
+script = ExtResource("1_prop")
+box_size = Vector3(1.1, 0.9, 0.06)
+color = Color(1, 0.84, 0.52, 1)
+emissive = true
+emission_energy = 1.6
+corner_radius = 0.0
+collide = false
+
+; --- The car ---------------------------------------------------------------
+; Near lane, travelling east (+X), so it arrives from the participant's left as
+; they face the road. Slow, gap between runs, stops for anyone in the road.
+
+[node name="CarNearLead" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.27, 11.05)
+script = ExtResource("5_car")
+speed = 3.5
+start_x = -26.0
+end_x = 26.0
+gap_seconds = 9.0
+stop_line_x = -2.8
+signal_path = NodePath("../CrossingSignal")
+
+; --- Crossing measurement (Core System H) ----------------------------------
+
+; A plain Area3D: RoadCrossing gives it its shape and layers. It deliberately
+; does NOT carry the RoomZone script -- walking out of this little box must not
+; read as walking off the street.
+
+[node name="CrossingApproach" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 8.7)
+
+[node name="RoadCrossing" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.98, 12.8)
+script = ExtResource("6_crossing")
+zone_id = "street_crossing"
+room = "street"
+extents = Vector3(52, 2.5, 7.0)
+crossing_centre_x = 0.0
+crossing_half_width = 2.0
+safe_gap_seconds = 6.0
+signal_path = NodePath("../CrossingSignal")
+approach_zone_path = NodePath("../CrossingApproach")
+approach_extents = Vector3(7.0, 2.2, 1.4)
+
+; --- Hazard 1: the step down at the front door -----------------------------
+
+[node name="HazardFrontStep" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0.3, 1.5)
+script = ExtResource("2_hazard")
+hazard_id = "street_front_step"
+hazard_name = "Step down at the front door"
+room = "street"
+is_hazard = true
+explanation = "A single step on the way out is easy to forget. Look down as you go through the door, and fit a handrail beside it."
+extents = Vector3(1.7, 1.0, 0.8)
+label_height = 0.8
+
+; --- Hazard 2: lifted paving slab ------------------------------------------
+
+[node name="PavingSlabFlat" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.2, -0.135, 8.2)
+script = ExtResource("1_prop")
+box_size = Vector3(0.9, 0.02, 0.9)
+surface = "paving"
+color = Color(0.66, 0.65, 0.62, 1)
+collide = false
+
+[node name="PavingSlabLifted" type="Node3D" parent="."]
+transform = Transform3D(0.995, 0.105, 0, -0.105, 0.995, 0, 0, 0, 1, 4.1, -0.11, 8.2)
+script = ExtResource("1_prop")
+box_size = Vector3(0.9, 0.04, 0.9)
+surface = "paving"
+color = Color(0.63, 0.62, 0.59, 1)
+collide = false
+
+[node name="HazardUnevenPaving" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.8, 0.35, 8.2)
+script = ExtResource("2_hazard")
+hazard_id = "street_uneven_paving"
+hazard_name = "Lifted paving slab"
+room = "street"
+is_hazard = true
+explanation = "A slab lifted by a tree root catches the toe of a shoe or a walking frame. Report it to the council."
+extents = Vector3(1.7, 1.0, 1.2)
+label_height = 0.7
+
+[node name="SlipZonePaving" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.1, 0.8, 8.1)
+script = ExtResource("3_slip")
+zone_id = "street_paving_trip"
+room = "street"
+linked_hazard_path = NodePath("../HazardUnevenPaving")
+warning_line = "Mind your step. That paving slab is lifted."
+; The lifted slab: all of it is the hazard, so the footprint is the volume.
+route_extents = Vector3(1.0, 0.3, 0.7)
+; Warning volume: 0.45 m of approach before the spoken line. Nothing is
+; scored against it -- see route_extents.
+extents = Vector3(1.9, 2.0, 1.6)
+
+; --- Hazard 3: wet leaves --------------------------------------------------
+
+; Moved east onto the line between the gate and the crossing: west of the
+; gate it was never on anybody's way anywhere.
+;
+; A hundred and ten individual leaves, not a brown box. The pavement surface is
+; at y -0.14, and this node sits ON it, so every leaf is measured from the
+; ground. See leaf_litter.gd for why one flat colour could never have worked.
+[node name="WetLeaves" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.9, -0.14, 7.95)
+script = ExtResource("13_leaves")
+size = Vector2(1.5, 0.75)
+leaves = 110
+shape_seed = 3
+; Soaked: dark, and shiny enough to catch the sky, which is the cue that says
+; "slippery" before anybody reads the label.
+wetness = 0.78
+
+[node name="HazardWetLeaves" type="Area3D" parent="."]
+; Reaches the ground: at y 0.4 with a 1.0 height it stopped 35 mm above the
+; leaves themselves, so there was nothing inside it to light up.
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.9, 0.3, 7.95)
+script = ExtResource("2_hazard")
+hazard_id = "street_wet_leaves"
+hazard_name = "Wet leaves on the pavement"
+room = "street"
+is_hazard = true
+explanation = "Wet leaves are as slippery as ice. Walk round them, or brush them away before they pack down."
+extents = Vector3(1.6, 1.0, 0.9)
+label_height = 0.7
+; Named: the drift is built at run time and is 35 mm deep inside a volume a
+; metre tall, so the overlap rule would never call it "mostly inside".
+highlight_meshes = Array[NodePath]([NodePath("../WetLeaves/Leaves"), NodePath("../WetLeaves/Mulch")])
+
+[node name="SlipZoneLeaves" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.9, 0.8, 7.95)
+script = ExtResource("3_slip")
+zone_id = "street_leaves_slip"
+room = "street"
+linked_hazard_path = NodePath("../HazardWetLeaves")
+warning_line = "Careful. Wet leaves are as slippery as ice."
+; The drift of wet leaves: all of it is slippery.
+route_extents = Vector3(1.5, 0.3, 0.75)
+; Warning volume: 0.45 m of approach before the spoken line. Nothing is
+; scored against it -- see route_extents.
+extents = Vector3(2.4, 2.0, 1.6)
+
+; --- Hazard 4: the high kerb, away from the crossing -----------------------
+
+[node name="HazardHighKerb" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.15, 9.25)
+script = ExtResource("2_hazard")
+hazard_id = "street_high_kerb"
+hazard_name = "High kerb with no dropped edge"
+room = "street"
+is_hazard = true
+explanation = "Stepping down a full kerb takes more balance than it looks. Walk to the dropped kerb at the crossing instead."
+extents = Vector3(3.0, 1.0, 1.0)
+label_height = 0.6
+
+; --- Hazard 5: a bin pushing you off the pavement --------------------------
+
+[node name="WheelieBin" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.4, 8.5)
+script = ExtResource("1_prop")
+box_size = Vector3(0.62, 1.1, 0.72)
+color = Color(0.26, 0.35, 0.28, 1)
+
+[node name="BinLid" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.98, 8.5)
+script = ExtResource("1_prop")
+box_size = Vector3(0.66, 0.08, 0.76)
+color = Color(0.2, 0.28, 0.22, 1)
+collide = false
+
+[node name="HazardBinBlocking" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.55, 8.5)
+script = ExtResource("2_hazard")
+hazard_id = "street_bin_blocking"
+hazard_name = "Bin blocking the pavement"
+room = "street"
+is_hazard = true
+explanation = "Anything that pushes you off the pavement puts you in the road. Ask for it to be moved back after collection."
+extents = Vector3(1.0, 1.5, 1.1)
+label_height = 0.9
+
+; --- Decoy: the postbox is perfectly safe ----------------------------------
+
+[node name="PostboxBody" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.46, 17.6)
+script = ExtResource("1_prop")
+kind = 1
+box_size = Vector3(0.5, 1.2, 0.5)
+surface = "paint_red"
+color = Color(0.6, 0.12, 0.12, 1)
+
+[node name="PostboxTop" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 1.11, 17.6)
+script = ExtResource("1_prop")
+kind = 2
+box_size = Vector3(0.5, 0.3, 0.5)
+surface = "paint_red"
+color = Color(0.6, 0.12, 0.12, 1)
+collide = false
+
+[node name="DecoyPostbox" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.55, 17.6)
+script = ExtResource("2_hazard")
+hazard_id = "street_postbox"
+hazard_name = "Postbox"
+room = "street"
+is_hazard = false
+extents = Vector3(0.8, 1.6, 0.8)
+
+; --- Street furniture and context -----------------------------------------
+
+[node name="BenchSeat" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.2, 0.31, 17.7)
+script = ExtResource("1_prop")
+box_size = Vector3(1.6, 0.08, 0.45)
+corner_radius = 0.012
+surface = "oak_wood"
+color = Color(0.45, 0.34, 0.24, 1)
+
+[node name="BenchBack" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.2, 0.62, 17.9)
+script = ExtResource("1_prop")
+box_size = Vector3(1.6, 0.5, 0.07)
+corner_radius = 0.012
+surface = "oak_wood"
+color = Color(0.45, 0.34, 0.24, 1)
+
+[node name="BenchLegWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.08, 17.7)
+script = ExtResource("1_prop")
+box_size = Vector3(0.08, 0.44, 0.4)
+surface = "steel_dark"
+color = Color(0.3, 0.3, 0.32, 1)
+collide = false
+
+[node name="BenchLegEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9, 0.08, 17.7)
+script = ExtResource("1_prop")
+box_size = Vector3(0.08, 0.44, 0.4)
+surface = "steel_dark"
+color = Color(0.3, 0.3, 0.32, 1)
+collide = false
+
+[node name="LampPost" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.6, 2, 8.9)
+script = ExtResource("1_prop")
+kind = 1
+box_size = Vector3(0.14, 4.3, 0.14)
+surface = "steel_dark"
+color = Color(0.35, 0.36, 0.38, 1)
+
+[node name="LampHead" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.6, 4.2, 8.9)
+script = ExtResource("1_prop")
+box_size = Vector3(0.5, 0.18, 0.3)
+emission_energy = 1.6
+surface = "lampshade"
+color = Color(0.9, 0.88, 0.75, 1)
+emissive = true
+collide = false
+
+[node name="NeighbourHouseWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.3, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9, 5, 6)
+surface = "brick"
+color = Color(0.78, 0.73, 0.67, 1)
+
+[node name="NeighbourHouseEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, 2.3, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9, 5, 6)
+surface = "exterior_render"
+color = Color(0.74, 0.7, 0.68, 1)
+
+[node name="NeighbourRoofWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 5, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9.4, 0.4, 6.4)
+surface = "roof_tile"
+color = Color(0.4, 0.3, 0.28, 1)
+collide = false
+
+[node name="NeighbourRoofEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, 5, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9.4, 0.4, 6.4)
+surface = "roof_tile"
+color = Color(0.4, 0.3, 0.28, 1)
+collide = false
+
+; --- The participant's own house, seen from outside ------------------------
+; Flat roofs over the rooms, and a taller one over the stair shaft, so the
+; house reads as a house from the street instead of an open doll's house.
+
+[node name="RoofNorth" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.65, 2.6, -2.25)
+script = ExtResource("1_prop")
+box_size = Vector3(13.4, 0.3, 7.9)
+surface = "roof_tile"
+color = Color(0.42, 0.33, 0.3, 1)
+
+[node name="RoofKitchen" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.1, 2.6, 3.2)
+script = ExtResource("1_prop")
+box_size = Vector3(4.1, 0.3, 4.1)
+surface = "roof_tile"
+
+[node name="RoofSouthWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.525, 2.6, 3.9)
+script = ExtResource("1_prop")
+box_size = Vector3(3.35, 0.3, 5.4)
+surface = "roof_tile"
+color = Color(0.42, 0.33, 0.3, 1)
+
+[node name="RoofSouthEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.7, 2.6, 3.9)
+script = ExtResource("1_prop")
+box_size = Vector3(3.7, 0.3, 5.4)
+surface = "roof_tile"
+color = Color(0.42, 0.33, 0.3, 1)
+
+[node name="RoofStairShaft" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.15, 3.9)
+script = ExtResource("1_prop")
+box_size = Vector3(1.8, 0.3, 5.4)
+surface = "roof_tile"
+color = Color(0.42, 0.33, 0.3, 1)
+
+; --- The front door, standing open ----------------------------------------
+
+[node name="FrontDoor" type="Node3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -3.36, 1.015, 1.78)
+script = ExtResource("1_prop")
+box_size = Vector3(0.82, 2.03, 0.05)
+corner_radius = 0.01
+surface = "walnut_wood"
+color = Color(0.5, 0.36, 0.26, 1)
+collide = false
+
+
+; --- More light out here --------------------------------------------------
+; Three lamps lit three pools and left the rest of fifty-two metres black,
+; which is fine at noon and useless at midnight: every outdoor hazard and both
+; practices have to be findable after dark. Posts stand ON the pavement (base
+; at y -0.15, the paving surface) and their lights are in `street_light`, so
+; they are off all day.
+; near pavement, between the gate and the west lamp
+[node name="LampPostMidWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.5, 2, 9.05)
+script = ExtResource("1_prop")
+box_size = Vector3(0.14, 4.3, 0.14)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampHeadMidWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.5, 4.2, 9.05)
+script = ExtResource("1_prop")
+box_size = Vector3(0.5, 0.18, 0.3)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampLightMidWest" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.5, 4.1, 9.05)
+light_color = Color(1, 0.86, 0.66, 1)
+light_energy = 2.8
+light_specular = 0.3
+omni_range = 12.0
+omni_attenuation = 1.4
+; near pavement, east of the sign, hard against the kerb
+[node name="LampPostMidEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 2, 9.05)
+script = ExtResource("1_prop")
+box_size = Vector3(0.14, 4.3, 0.14)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampHeadMidEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 4.2, 9.05)
+script = ExtResource("1_prop")
+box_size = Vector3(0.5, 0.18, 0.3)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampLightMidEast" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 4.1, 9.05)
+light_color = Color(1, 0.86, 0.66, 1)
+light_energy = 2.8
+light_specular = 0.3
+omni_range = 12.0
+omni_attenuation = 1.4
+; far pavement, over the postbox end
+[node name="LampPostFarEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.0, 2, 17.9)
+script = ExtResource("1_prop")
+box_size = Vector3(0.14, 4.3, 0.14)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampHeadFarEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.0, 4.2, 17.9)
+script = ExtResource("1_prop")
+box_size = Vector3(0.5, 0.18, 0.3)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampLightFarEast" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.0, 4.1, 17.9)
+light_color = Color(1, 0.86, 0.66, 1)
+light_energy = 2.8
+light_specular = 0.3
+omni_range = 12.0
+omni_attenuation = 1.4
+; far pavement, east
+[node name="LampPostFarEastTwo" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.0, 2, 17.9)
+script = ExtResource("1_prop")
+box_size = Vector3(0.14, 4.3, 0.14)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampHeadFarEastTwo" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.0, 4.2, 17.9)
+script = ExtResource("1_prop")
+box_size = Vector3(0.5, 0.18, 0.3)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampLightFarEastTwo" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.0, 4.1, 17.9)
+light_color = Color(1, 0.86, 0.66, 1)
+light_energy = 2.8
+light_specular = 0.3
+omni_range = 12.0
+omni_attenuation = 1.4
+; far pavement, west
+[node name="LampPostFarWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.0, 2, 17.9)
+script = ExtResource("1_prop")
+box_size = Vector3(0.14, 4.3, 0.14)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampHeadFarWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.0, 4.2, 17.9)
+script = ExtResource("1_prop")
+box_size = Vector3(0.5, 0.18, 0.3)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampLightFarWest" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.0, 4.1, 17.9)
+light_color = Color(1, 0.86, 0.66, 1)
+light_energy = 2.8
+light_specular = 0.3
+omni_range = 12.0
+omni_attenuation = 1.4
+; Moonlight over the whole street. One wide, weak light rather than raising the
+; ambient, which would lift the inside of the house as well and undo the point
+; of the dark bedroom.
+[node name="MoonFill" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 14, 9)
+light_color = Color(0.62, 0.7, 0.92, 1)
+light_energy = 0.9
+light_specular = 0.1
+omni_range = 60.0
+omni_attenuation = 0.9
+
+; The far pavement needs its own soft fill: the postbox and the bench are the
+; end of the crossing practice, and walking to something you cannot see is not
+; a practice.
+[node name="FarPavementFill" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 16.6)
+light_color = Color(1, 0.93, 0.84, 1)
+light_energy = 1.1
+light_specular = 0.15
+omni_range = 22.0
+omni_attenuation = 1.2
+
+; And the front garden, where the open gully is.
+[node name="GardenFill" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 3.6, 5.2)
+light_color = Color(1, 0.92, 0.8, 1)
+light_energy = 1.3
+light_specular = 0.15
+omni_range = 9.0
+omni_attenuation = 1.5
+
+; --- Realism pass: the street ---------------------------------------------
+; Belisha beacons either side of the crossing. Worth their four nodes: they are
+; the single most recognisable "this is a crossing" cue in the built
+; environment, and the crossing behaviour is one of the scored tests.
+
+; One lamp lit one pool of pavement and left the other forty metres of street
+; black, which is no use at all once night mode turns the sun off: the walk and
+; the crossing both have to be lightable. One light per lamp head, all of them
+; off during the day.
+[node name="StreetLampLightWest" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.5, 4.1, 8.9)
+light_color = Color(1, 0.86, 0.66, 1)
+light_energy = 2.6
+light_specular = 0.3
+omni_range = 10.0
+omni_attenuation = 1.5
+
+[node name="StreetLampLightEast" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 4.1, 8.9)
+light_color = Color(1, 0.86, 0.66, 1)
+light_energy = 2.6
+light_specular = 0.3
+omni_range = 10.0
+omni_attenuation = 1.5
+
+[node name="StreetLampLightFar" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.5, 4.1, 17.9)
+light_color = Color(1, 0.86, 0.66, 1)
+light_energy = 2.6
+light_specular = 0.3
+omni_range = 10.0
+omni_attenuation = 1.5
+
+; Over the crossing itself, because a crossing you cannot see is not a crossing
+; you can practise. Mounted on the near pedestrian pole, pointing down.
+[node name="CrossingLight" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 9.3)
+light_color = Color(1, 0.93, 0.82, 1)
+light_energy = 2.2
+light_specular = 0.25
+omni_range = 9.0
+omni_attenuation = 1.6
+
+; The porch light over the front door: the one that matters for the step down.
+[node name="PorchLight" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.9, 2.1, 1.95)
+light_color = Color(1, 0.9, 0.74, 1)
+light_energy = 1.6
+light_specular = 0.2
+omni_range = 5.0
+omni_attenuation = 1.8
+
+[node name="StreetLampLight" type="OmniLight3D" parent="." groups=["street_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.6, 4.1, 8.9)
+light_color = Color(1, 0.86, 0.66, 1)
+light_energy = 2.6
+light_specular = 0.3
+omni_range = 10.0
+omni_attenuation = 1.5
+
+; Front door furniture. The door is turned yaw +90, so its outward face looks
+; along +X and these sit just clear of it.
+
+[node name="Letterbox" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.328, 1.0, 1.78)
+script = ExtResource("1_prop")
+box_size = Vector3(0.018, 0.06, 0.3)
+surface = "brushed_metal"
+corner_radius = 0.008
+collide = false
+
+[node name="DoorKnocker" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.328, 1.42, 1.78)
+script = ExtResource("1_prop")
+kind = 1
+box_size = Vector3(0.09, 0.03, 0.09)
+surface = "brushed_metal"
+collide = false
+
+[node name="HouseNumber" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.328, 1.72, 1.78)
+script = ExtResource("1_prop")
+box_size = Vector3(0.016, 0.13, 0.1)
+surface = "brushed_metal"
+corner_radius = 0.004
+collide = false
+
+[node name="DoorCanopy" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.15, 2.18, 1.78)
+script = ExtResource("1_prop")
+box_size = Vector3(0.55, 0.07, 1.3)
+surface = "roof_tile"
+collide = false
+
+; Planting. All of it collide = false: the garden is scenery, and the route from
+; the front door to the pavement has to stay exactly as wide as it was.
+
+[node name="HedgeWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.6, 0.72, 7.05)
+script = ExtResource("1_prop")
+box_size = Vector3(8.8, 0.72, 0.52)
+surface = "foliage"
+corner_radius = 0.1
+collide = false
+
+[node name="HedgeEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0.72, 7.05)
+script = ExtResource("1_prop")
+box_size = Vector3(14, 0.72, 0.52)
+surface = "foliage"
+tint = Color(0.92, 1.04, 0.9, 1)
+corner_radius = 0.1
+collide = false
+
+[node name="ShrubPathWestA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 0.17, 2.6)
+script = ExtResource("1_prop")
+kind = 2
+box_size = Vector3(0.75, 0.68, 0.75)
+surface = "foliage"
+collide = false
+
+[node name="ShrubPathWestB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.6, 0.13, 4.4)
+script = ExtResource("1_prop")
+kind = 2
+box_size = Vector3(0.62, 0.58, 0.62)
+surface = "foliage"
+tint = Color(1.06, 0.96, 0.86, 1)
+collide = false
+
+[node name="ShrubPathEastA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.45, 0.15, 3.1)
+script = ExtResource("1_prop")
+kind = 2
+box_size = Vector3(0.7, 0.62, 0.7)
+surface = "foliage"
+tint = Color(0.94, 1.02, 0.9, 1)
+collide = false
+
+[node name="ShrubPathEastB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0.11, 5.2)
+script = ExtResource("1_prop")
+kind = 2
+box_size = Vector3(0.58, 0.54, 0.58)
+surface = "foliage"
+collide = false
+
+[node name="DrainCover" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.2, -0.262, 9.5)
+script = ExtResource("1_prop")
+box_size = Vector3(0.44, 0.02, 0.32)
+surface = "steel_dark"
+corner_radius = 0.004
+collide = false
+
+[node name="GatePostWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.2, 0.42, 7.05)
+script = ExtResource("1_prop")
+box_size = Vector3(0.3, 1.1, 0.3)
+surface = "brick"
+
+[node name="GatePostEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.8, 0.42, 7.05)
+script = ExtResource("1_prop")
+box_size = Vector3(0.3, 1.1, 0.3)
+surface = "brick"
+
+[node name="GatePostCapWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.2, 1.0, 7.05)
+script = ExtResource("1_prop")
+box_size = Vector3(0.36, 0.07, 0.36)
+surface = "paving"
+collide = false
+
+[node name="GatePostCapEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.8, 1.0, 7.05)
+script = ExtResource("1_prop")
+box_size = Vector3(0.36, 0.07, 0.36)
+surface = "paving"
+collide = false
+
+; --- The world outside the windows ----------------------------------------
+; Cutting real holes in the north walls created a problem the flat bright panels
+; never had: there was nothing out there. The living room, bedroom and bathroom
+; all look north, and beyond the house the ground simply stopped, so a window
+; framed the sky's ground colour and the edge of the world.
+;
+; A ground plane and a treeline fix it for four nodes. Everything here is
+; collide = false: it is scenery seen through glass, and it must not give the
+; teleport arc anything new to land on or stop at.
+
+[node name="GroundPlane" type="Node3D" parent="."]
+; Its top was at y -0.200 and the carriageway's is at -0.270, so the backdrop
+; was 70 mm ABOVE the road: the tarmac, the zebra, the centre lines, the stop
+; lines and the drain were all underneath the grass, and the street read as a
+; lawn with a pavement round it. Lowered to sit under the road instead of over
+; it. check_street() now refuses a backdrop higher than anything it backs.
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.34, 4)
+script = ExtResource("1_prop")
+box_size = Vector3(180, 0.1, 180)
+surface = "grass"
+collide = false
+
+[node name="TreelineNorth" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, -46)
+script = ExtResource("1_prop")
+box_size = Vector3(150, 7, 5)
+surface = "foliage"
+tint = Color(0.62, 0.74, 0.62, 1)
+corner_radius = 0.6
+collide = false
+
+[node name="TreelineWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -52, 3.0, -8)
+script = ExtResource("1_prop")
+box_size = Vector3(5, 6.2, 90)
+surface = "foliage"
+tint = Color(0.56, 0.68, 0.58, 1)
+corner_radius = 0.6
+collide = false
+
+[node name="TreelineEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 52, 3.0, -8)
+script = ExtResource("1_prop")
+box_size = Vector3(5, 6.2, 90)
+surface = "foliage"
+tint = Color(0.6, 0.72, 0.6, 1)
+corner_radius = 0.6
+collide = false
+
+; --- Core System J: the signalled crossing ---------------------------------
+; One controller, four posts. Splitting them is what lets a primary and a
+; secondary head show the same thing without two timers that can drift apart.
+
+[node name="CrossingSignal" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 12.8)
+script = ExtResource("7_signal")
+minimum_green = 6.0
+amber_seconds = 3.0
+all_red_seconds = 2.0
+; The road is 7 m. At the 0.7 m/s an unhurried older walker actually manages,
+; that is 10 s to cross and 6 s more to finish if they set off late.
+walk_seconds = 10.0
+clearing_seconds = 6.0
+rest_in_green = true
+bleeper = true
+
+; The pedestrian posts. The near one is on the west side of the crossing,
+; because the front path arrives at x = -2.5 and that is the side they reach
+; first. The far one shows both ways: its big face is what you read from this
+; side of the road.
+
+[node name="PedPostNear" type="Node3D" parent="."]
+; East edge of the crossing. It was at x = -2.9, which is inside the front
+; path -- a pole to walk into on the way out of your own gate.
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, -0.14, 8.95)
+script = ExtResource("8_post")
+kind = 1
+controller_path = NodePath("../CrossingSignal")
+facing_degrees = 0.0
+has_button = true
+back_to_back = false
+
+[node name="PedPostFar" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9, -0.14, 16.65)
+script = ExtResource("8_post")
+kind = 1
+controller_path = NodePath("../CrossingSignal")
+facing_degrees = 180.0
+has_button = true
+back_to_back = true
+
+; Traffic heads, each facing its own oncoming lane. Yaw 90 looks along -X.
+
+[node name="TrafficPostNear" type="Node3D" parent="."]
+; 0.8 m clear of the front path, which ends at x = -3.0.
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.8, -0.14, 9.0)
+script = ExtResource("8_post")
+kind = 0
+controller_path = NodePath("../CrossingSignal")
+facing_degrees = 90.0
+
+[node name="TrafficPostFar" type="Node3D" parent="."]
+; Was 0.7 m from PedPostFar, close enough that the two housings overlapped.
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.4, -0.14, 16.6)
+script = ExtResource("8_post")
+kind = 0
+controller_path = NodePath("../CrossingSignal")
+facing_degrees = -90.0
+
+; The stop lines the cars hold at.
+
+[node name="StopLineNear" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.8, -0.265, 11.05)
+script = ExtResource("1_prop")
+box_size = Vector3(0.3, 0.02, 3.5)
+color = Color(0.93, 0.93, 0.9, 1)
+collide = false
+
+[node name="StopLineFar" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.8, -0.265, 14.55)
+script = ExtResource("1_prop")
+box_size = Vector3(0.3, 0.02, 3.5)
+color = Color(0.93, 0.93, 0.9, 1)
+collide = false
+
+[node name="CrossingBar7" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.265, 15.65)
+script = ExtResource("1_prop")
+box_size = Vector3(4, 0.02, 0.5)
+color = Color(0.93, 0.93, 0.9, 1)
+collide = false
+
+; --- Three more cars -------------------------------------------------------
+; Near lane runs +X, far lane -X. Direction comes from start_x/end_x, so a car
+; in the far lane is the same node with those two swapped. The start delays
+; stagger them; without the delays all four set off on the same frame.
+
+[node name="CarNearFollow" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.27, 11.05)
+script = ExtResource("5_car")
+speed = 3.1
+start_x = -26.0
+end_x = 26.0
+gap_seconds = 13.0
+start_delay = 5.5
+stop_line_x = -2.8
+signal_path = NodePath("../CrossingSignal")
+body_color = Color(0.22, 0.29, 0.42, 1)
+
+[node name="CarFarLead" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.27, 14.55)
+script = ExtResource("5_car")
+speed = 3.4
+start_x = 26.0
+end_x = -26.0
+gap_seconds = 10.0
+start_delay = 2.5
+stop_line_x = 2.8
+signal_path = NodePath("../CrossingSignal")
+body_color = Color(0.85, 0.84, 0.8, 1)
+
+[node name="CarFarFollow" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.27, 14.55)
+script = ExtResource("5_car")
+speed = 2.9
+start_x = 26.0
+end_x = -26.0
+gap_seconds = 15.0
+start_delay = 9.0
+stop_line_x = 2.8
+signal_path = NodePath("../CrossingSignal")
+body_color = Color(0.36, 0.42, 0.35, 1)
+
+; --- Filling out the longer street -----------------------------------------
+
+[node name="LampPostWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.5, 2, 8.9)
+script = ExtResource("1_prop")
+box_size = Vector3(0.14, 4.3, 0.14)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampHeadWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.5, 4.2, 8.9)
+script = ExtResource("1_prop")
+box_size = Vector3(0.5, 0.18, 0.3)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampPostEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 2, 8.9)
+script = ExtResource("1_prop")
+box_size = Vector3(0.14, 4.3, 0.14)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampHeadEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 4.2, 8.9)
+script = ExtResource("1_prop")
+box_size = Vector3(0.5, 0.18, 0.3)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampPostFar" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.5, 2, 17.9)
+script = ExtResource("1_prop")
+box_size = Vector3(0.14, 4.3, 0.14)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="LampHeadFar" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.5, 4.2, 17.9)
+script = ExtResource("1_prop")
+box_size = Vector3(0.5, 0.18, 0.3)
+surface = "steel_dark"
+color = Color(0.3, 0.32, 0.34, 1)
+
+[node name="NeighbourHouseWestFar" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19.5, 2.3, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9, 5, 6)
+surface = "brick"
+color = Color(0.56, 0.44, 0.38, 1)
+
+[node name="NeighbourRoofWestFar" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19.5, 5, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9.4, 0.4, 6.4)
+surface = "roof_tile"
+color = Color(0.4, 0.3, 0.28, 1)
+
+[node name="NeighbourHouseEastFar" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.5, 2.3, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9, 5, 6)
+surface = "brick"
+color = Color(0.5, 0.42, 0.4, 1)
+
+[node name="NeighbourRoofEastFar" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.5, 5, 21.8)
+script = ExtResource("1_prop")
+box_size = Vector3(9.4, 0.4, 6.4)
+surface = "roof_tile"
+color = Color(0.4, 0.3, 0.28, 1)
+
+[node name="BusStopPole" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 1.25, 17.6)
+script = ExtResource("1_prop")
+box_size = Vector3(0.09, 2.8, 0.09)
+surface = "steel_dark"
+color = Color(0.32, 0.34, 0.36, 1)
+
+[node name="BusStopSign" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 2.45, 17.6)
+script = ExtResource("1_prop")
+box_size = Vector3(0.62, 0.42, 0.06)
+color = Color(0.9, 0.9, 0.88, 1)
+
+; The kerbs stop either side of the crossing, which leaves a 100 mm slot of
+; nothing between pavement and carriageway where the dropped kerb should be --
+; a slit of ground showing through, right where you step off. These fill it,
+; flush, which is what a dropped kerb is.
+
+[node name="DroppedKerbNear" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.19, 9.25)
+script = ExtResource("1_prop")
+box_size = Vector3(4, 0.1, 0.3)
+surface = "paving"
+color = Color(0.7, 0.69, 0.66, 1)
+walkable = true
+
+[node name="DroppedKerbFar" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.19, 16.35)
+script = ExtResource("1_prop")
+box_size = Vector3(4, 0.1, 0.3)
+surface = "paving"
+color = Color(0.7, 0.69, 0.66, 1)
+walkable = true
+
+; --- The bin is a hazard you have to get round, so give it a footprint -------
+; It had an aim volume to point at but nothing that noticed you walking into
+; it, which meant the one obstacle actually standing on the pavement was the
+; one the walking route could not test.
+
+[node name="SlipZoneBin" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.8, 8.5)
+script = ExtResource("3_slip")
+zone_id = "street_bin_knock"
+room = "street"
+linked_hazard_path = NodePath("../HazardBinBlocking")
+warning_line = "Mind the bin. There is not much pavement left beside it."
+route_extents = Vector3(0.7, 0.3, 0.8)
+extents = Vector3(1.6, 2.0, 1.7)
+
+; --- Street practice 1: walking the footpath (Core System I) -----------------
+; Out of the gate, along the pavement and back to the crossing. Every leg but
+; none of the rings touches something: the leaves just outside the gate, the
+; bin, the lifted slab, then the bin again from the other side.
+
+[node name="FootpathRoute" type="Node3D" parent="."]
+script = ExtResource("9_route")
+room = "street"
+start_line = "First, walk along the pavement. Stand on each ring in turn and keep clear of whatever is underfoot."
+
+[node name="FootMarker1" type="Area3D" parent="FootpathRoute"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, 4.6)
+script = ExtResource("10_marker")
+marker_id = "street_foot_1"
+room = "street"
+label_text = "down the path"
+extents = Vector3(0.6, 3, 0.6)
+
+[node name="FootMarker2" type="Area3D" parent="FootpathRoute"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.4, 0, 7.95)
+script = ExtResource("10_marker")
+marker_id = "street_foot_2"
+room = "street"
+label_text = "through the gate"
+extents = Vector3(0.6, 3, 0.6)
+
+[node name="FootMarker3" type="Area3D" parent="FootpathRoute"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0, 7.75)
+script = ExtResource("10_marker")
+marker_id = "street_foot_3"
+room = "street"
+label_text = "past the leaves"
+extents = Vector3(0.6, 3, 0.6)
+
+[node name="FootMarker4" type="Area3D" parent="FootpathRoute"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.1, 0, 8.8)
+script = ExtResource("10_marker")
+marker_id = "street_foot_4"
+room = "street"
+label_text = "past the bin"
+extents = Vector3(0.6, 3, 0.6)
+
+[node name="FootMarker5" type="Area3D" parent="FootpathRoute"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.6, 0, 7.9)
+script = ExtResource("10_marker")
+marker_id = "street_foot_5"
+room = "street"
+label_text = "past the sign"
+extents = Vector3(0.6, 3, 0.6)
+
+; West of the crossing's own waiting ring rather than on top of it. The two
+; routes meet here -- the footpath walk ends where the crossing practice begins
+; -- and with both rings at x 0 standing on one completed the other.
+[node name="FootMarker6" type="Area3D" parent="FootpathRoute"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.9, 0, 8.75)
+script = ExtResource("10_marker")
+marker_id = "street_foot_6"
+room = "street"
+label_text = "back to the crossing"
+extents = Vector3(0.6, 3, 0.6)
+
+[node name="CrossingEdgeWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.05, -0.265, 12.8)
+script = ExtResource("1_prop")
+box_size = Vector3(0.1, 0.02, 7)
+color = Color(0.93, 0.93, 0.9, 1)
+collide = false
+
+[node name="CrossingEdgeEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.05, -0.265, 12.8)
+script = ExtResource("1_prop")
+box_size = Vector3(0.1, 0.02, 7)
+color = Color(0.93, 0.93, 0.9, 1)
+collide = false
+
+; --- Street practice 2: crossing on the green man ---------------------------
+; Armed by the button on the pole; the rings appear when the green man does.
+
+[node name="CrossingPractice" type="Node3D" parent="."]
+script = ExtResource("11_practice")
+room = "street"
+practice_id = "street_crossing_run"
+signal_path = NodePath("../CrossingSignal")
+crossing_path = NodePath("../RoadCrossing")
+start_grace = 3.5
+start_limit = 9.0
+off_allowance = 0.7
+off_limit = 3.0
+; What the rings say coming back, in the order they are reached.
+return_labels = Array[String](["wait here", "onto the crossing", "halfway", "nearly there", "back on the pavement"])
+
+; Five rings, and both END rings stand on a PAVEMENT.
+;
+; There were four, from z 10.1 (already in the road) to 17.3. That works once,
+; outwards. Coming back, the last ring of the run was the one at 10.1 -- so the
+; return crossing finished with the participant standing in the carriageway,
+; being congratulated. Both ends are on a footway now, so the run ends where it
+; should whichever way it is walked.
+;
+;   8.7   near pavement      the one you wait on
+;   10.6  just into the road
+;   12.8  the middle
+;   15.0  nearly across
+;   16.9  far pavement
+
+[node name="CrossMarker1" type="Area3D" parent="CrossingPractice"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 8.7)
+script = ExtResource("10_marker")
+marker_id = "street_cross_1"
+room = "street"
+label_text = "wait here"
+extents = Vector3(1.6, 3, 0.9)
+
+[node name="CrossMarker2" type="Area3D" parent="CrossingPractice"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10.6)
+script = ExtResource("10_marker")
+marker_id = "street_cross_2"
+room = "street"
+label_text = "onto the crossing"
+extents = Vector3(1.2, 3, 0.9)
+
+[node name="CrossMarker3" type="Area3D" parent="CrossingPractice"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 12.8)
+script = ExtResource("10_marker")
+marker_id = "street_cross_3"
+room = "street"
+label_text = "halfway"
+extents = Vector3(1.2, 3, 0.9)
+
+[node name="CrossMarker4" type="Area3D" parent="CrossingPractice"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 15)
+script = ExtResource("10_marker")
+marker_id = "street_cross_4"
+room = "street"
+label_text = "nearly there"
+extents = Vector3(1.2, 3, 0.9)
+
+[node name="CrossMarker5" type="Area3D" parent="CrossingPractice"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 16.9)
+script = ExtResource("10_marker")
+marker_id = "street_cross_5"
+room = "street"
+label_text = "the far pavement"
+extents = Vector3(1.6, 3, 0.9)
+
+; With the backdrop dropped below the road, the strip between the far pavement
+; and the neighbour houses would be a 150 mm step down. This is the verge that
+; was always implied there.
+
+[node name="VergeFar" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.21, 20)
+script = ExtResource("1_prop")
+box_size = Vector3(56, 0.12, 2.8)
+surface = "grass"
+color = Color(0.42, 0.5, 0.31, 1)
+roughness = 1.0
+
+; --- Grass east of the front path ------------------------------------------
+; There was no lawn between x -2.0 and x 0.96 at all, so that strip of garden
+; was the backdrop showing through. Harmless while the backdrop was 50 mm down;
+; a 150 mm hole once it was dropped below the road.
+
+[node name="LawnEastOfPath" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4, -0.21, 4.28)
+script = ExtResource("1_prop")
+box_size = Vector3(3.2, 0.12, 5.84)
+surface = "grass"
+color = Color(0.42, 0.5, 0.31, 1)
+roughness = 1.0
+
+; --- Things that had a hazard but nothing to see ---------------------------
+; Both of these were named and scored but never modelled, so there was no
+; object to point at and nothing to light up when you found them.
+
+[node name="FrontStep" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, -0.07, 1.5)
+script = ExtResource("1_prop")
+box_size = Vector3(1.5, 0.14, 0.45)
+surface = "paving"
+color = Color(0.74, 0.72, 0.68, 1)
+walkable = true
+
+[node name="HighKerbSection" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, -0.17, 9.25)
+script = ExtResource("1_prop")
+box_size = Vector3(3, 0.22, 0.2)
+surface = "paving"
+color = Color(0.56, 0.55, 0.52, 1)
+
+; --- Hazard 6: the open gully in the front path ----------------------------
+
+; Sits ON the paving surface, so everything the node builds is measured from
+; the ground and nothing can float. The grating it lifted out leans against the
+; garden wall on the grass, which is where a crew actually puts it -- and a
+; grating on edge with daylight through its bars is the one thing that cannot
+; be mistaken for a paving slab.
+[node name="FrontGully" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, -0.14, 5.905)
+script = ExtResource("12_gully")
+opening = Vector2(0.37, 0.26)
+frame_margin = 0.045
+depth = 0.42
+; Bottom edge on the grass (10 mm below the paving), tipped back until the top
+; edge meets the face of the garden wall at z 6.97.
+grate_base = Vector3(-1, -0.01, 0.95)
+grate_lean_degrees = 68.0
+grate_yaw_degrees = 9.0
+
+[node name="HazardOpenDrain" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0.3, 5.905)
+script = ExtResource("2_hazard")
+hazard_id = "street_open_drain"
+hazard_name = "Open drain in the path"
+room = "street"
+is_hazard = true
+explanation = "A gully with its cover off is an ankle deep in the one place you look at least -- the path you have walked a thousand times. Cover it, and report it the same day."
+extents = Vector3(0.9, 1.2, 0.9)
+label_height = 0.6
+; Named, not inferred: the hole is deeper than the aim volume and the grating
+; is over by the wall, so neither is "mostly inside" it. What should light up
+; is the opening, its rim, and the cover that belongs over it.
+highlight_meshes = Array[NodePath]([NodePath("../FrontGully/Frame"), NodePath("../FrontGully/Shaft"), NodePath("../FrontGully/Grate")])
+
+[node name="SlipZoneDrain" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0.8, 5.905)
+script = ExtResource("3_slip")
+zone_id = "street_drain_trip"
+room = "street"
+linked_hazard_path = NodePath("../HazardOpenDrain")
+warning_line = "Mind the drain. The cover is off."
+; The hole plus a hand's width either side, not a metre square: on a 1.4 m path
+; a metre-square footprint leaves no lane, so getting past the gully safely was
+; scored as stepping into it.
+route_extents = Vector3(0.33, 0.3, 0.28)
+extents = Vector3(1.5, 2.0, 1.5)
+
+; --- Hazard 7: a sign narrowing the pavement -------------------------------
+
+[node name="ABoardFoot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.3, -0.11, 8.35)
+script = ExtResource("1_prop")
+box_size = Vector3(0.7, 0.06, 0.55)
+surface = "steel_dark"
+color = Color(0.26, 0.27, 0.29, 1)
+
+[node name="ABoardPanel" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.3, 0.3, 8.42)
+script = ExtResource("1_prop")
+box_size = Vector3(0.66, 0.78, 0.06)
+surface = "paint_satin"
+color = Color(0.88, 0.86, 0.8, 1)
+
+[node name="HazardABoard" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.3, 0.45, 8.35)
+script = ExtResource("2_hazard")
+hazard_id = "street_a_board"
+hazard_name = "Advertising board across the pavement"
+room = "street"
+is_hazard = true
+explanation = "A sign left out narrows the pavement to less than a walking frame needs, and it is below where you are looking. Go round it rather than stepping into the road."
+extents = Vector3(1.0, 1.4, 0.9)
+label_height = 0.85
+
+[node name="SlipZoneABoard" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.3, 0.8, 8.35)
+script = ExtResource("3_slip")
+zone_id = "street_a_board_knock"
+room = "street"
+linked_hazard_path = NodePath("../HazardABoard")
+warning_line = "Mind the sign. There is not much pavement left beside it."
+route_extents = Vector3(0.7, 0.3, 0.6)
+extents = Vector3(1.8, 2.0, 1.7)
+
+; --- Hazard 8: a branch at head height -------------------------------------
+; The only hazard out here that is not underfoot, which is the point of it:
+; everything else trains you to look down.
+
+;  The branch used to be two boxes hanging in the sky at head height with
+;  nothing above them -- a stick and a green blob, floating over the pavement.
+;  A branch is the lowest limb of something, and without the something the
+;  participant is not being asked to spot an overhanging branch, they are being
+;  asked to work out what they are looking at.
+;
+;  The node stands at the BASE OF THE TRUNK on the lawn (top y -0.15), so every
+;  part of the tree is measured up from the ground. `low_limb_to` is the far end
+;  of the low limb, relative to that base: (0.85, 2.25, 1.75) puts it at world
+;  (-5.00, 2.10, 8.00), out over the pavement, with its leaf clusters hanging to
+;  about 1.55 m -- which is what you walk into.
+[node name="StreetTree" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.85, -0.15, 6.25)
+script = ExtResource("14_tree")
+height = 4.8
+trunk_radius = 0.18
+lean_degrees = 4.0
+limbs = 5
+low_limb_to = Vector3(0.85, 2.25, 1.75)
+leaf_cluster = 0.42
+canopy_blobs = 9
+canopy_radius = 1.5
+shape_seed = 1
+
+[node name="HazardLowBranch" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.1, 1.9, 7.85)
+script = ExtResource("2_hazard")
+hazard_id = "street_low_branch"
+hazard_name = "Branch hanging at head height"
+room = "street"
+is_hazard = true
+explanation = "Catching your head makes you step back, and stepping back is how people go over. Duck under it or walk round, and ask for it to be cut."
+extents = Vector3(1.9, 0.95, 1.3)
+label_height = 0.55
+; The limb and its leaves, not the whole tree: lighting up a four-metre tree
+; would say "that tree", and what is being pointed out is the branch over the
+; pavement.
+highlight_meshes = Array[NodePath]([NodePath("../StreetTree/LowLimb"), NodePath("../StreetTree/LowLimbLeaves")])
+
+; --- A second decoy: a bin that is where it should be ----------------------
+; Next to the wheelie bin on purpose. The difference between the two is the
+; lesson: one narrows the walking line, the other does not.
+
+[node name="LitterBinBody" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8, 0.26, 7.7)
+script = ExtResource("1_prop")
+box_size = Vector3(0.4, 0.8, 0.4)
+surface = "steel_dark"
+color = Color(0.25, 0.3, 0.27, 1)
+
+[node name="LitterBinLid" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8, 0.69, 7.7)
+script = ExtResource("1_prop")
+box_size = Vector3(0.46, 0.06, 0.46)
+surface = "steel_dark"
+color = Color(0.2, 0.24, 0.22, 1)
+collide = false
+
+[node name="DecoyLitterBin" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8, 0.4, 7.7)
+script = ExtResource("2_hazard")
+hazard_id = "street_litter_bin"
+hazard_name = "Litter bin"
+room = "street"
+is_hazard = false
+explanation = "Against the boundary, clear of the walking line. Nothing wrong with this one."
+extents = Vector3(0.7, 1.2, 0.7)
+label_height = 0.7

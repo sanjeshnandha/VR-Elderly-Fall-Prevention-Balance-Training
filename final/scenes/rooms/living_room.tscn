@@ -1,0 +1,776 @@
+[gd_scene format=3 uid="uid://da626mc3lni3u"]
+
+[ext_resource type="Script" path="res://scripts/world/room_builder.gd" id="1_room"]
+[ext_resource type="Script" path="res://scripts/world/prop.gd" id="2_prop"]
+[ext_resource type="Script" path="res://scripts/world/hazard.gd" id="3_hazard"]
+[ext_resource type="Script" path="res://scripts/world/slip_zone.gd" id="4_slip"]
+[ext_resource type="Script" path="res://scripts/world/room_zone.gd" id="5_roomzone"]
+[ext_resource type="Script" path="res://scripts/world/room_route.gd" id="90_route"]
+[ext_resource type="Script" path="res://scripts/world/route_marker.gd" id="91_marker"]
+
+; ============================================================================
+;  LIVING ROOM  --  3.8 x 4.7 m, 2.4 m ceiling. Doorway on the +Z wall.
+;
+;  The room where people spend the most time, and where two of the most common
+;  domestic falls happen: catching a foot on something low and dark on the
+;  floor, and failing to get out of a seat.
+;
+;  Hazards
+;    the sofa        0.40 m seat, deep, no arms -- nothing to push up on, so
+;                    standing has to be done with the legs alone. The single
+;                    most common "I fell getting up" in this age group.
+;    coffee table    glass, 0.38 m tall, right on the route from the door. Low
+;                    and see-through is the worst combination: the eye does not
+;                    register it and the shin does.
+;    trailing flex   the TV lead run across the floor rather than round the
+;                    skirting.
+;    footstool       left where it was last used, just inside the door.
+;
+;  The armchair is the DECOY: firm, 0.48 m seat, proper arms. It is there as
+;  the good example -- flagging it costs nothing, and noticing the difference
+;  between the two seats is the whole lesson of this room.
+;
+;  ------------------------------------------------------------------------
+;  ON THE DRESSING OF THIS ROOM. Every hazard node below -- its id, position,
+;  trigger size and wording -- is exactly what it was before the realism pass.
+;  What changed is only what you can see: real materials instead of flat
+;  colours, a window cut into the wall instead of a bright panel stuck on it,
+;  and the ordinary clutter of a lived-in room (cushions, a throw, books on the
+;  table, curtains, a radiator, a plant, a light switch). The clutter matters
+;  for the training, not just the look: a hazard is only a real test of
+;  discrimination if it sits among things that are NOT hazards. A trailing flex
+;  is easy to spot in an empty room.
+;
+;  Everything added for looks has collide = false unless it is furniture you
+;  would actually bump into, so none of it changes where you can walk, what the
+;  teleport arc stops at, or what the hand can reach.
+; ============================================================================
+
+[node name="LivingRoom" type="Node3D"]
+
+[node name="RoomBuilder" type="Node3D" parent="."]
+script = ExtResource("1_room")
+size = Vector2(3.8, 4.7)
+height = 2.4
+floor_surface = "oak_floor"
+wall_surface = "wallpaper"
+ceiling_surface = "ceiling_plaster"
+trim_surface = "paint_satin"
+floor_color = Color(0.52, 0.44, 0.36, 1)
+wall_color = Color(0.86, 0.84, 0.79, 1)
+; Wall 0 (+Z) is the hallway's wall, doorway and all.
+build_walls = Array[bool]([false, true, true, true])
+openings = Array[Vector4]([])
+; A real window in the -Z wall: 1.5 x 1.2 m on an 850 mm sill, which is where
+; the old flat "Window" panel used to be painted on. RoomBuilder gives it a
+; lining, a projecting sill, glazing bars and a pane that stops the arc.
+window_openings = Array[Vector4]([Vector4(1, 0, 1.5, 1.2)])
+window_sill_height = 0.85
+
+[node name="RoomZone" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+script = ExtResource("5_roomzone")
+room = "living_room"
+extents = Vector3(3.8, 2.4, 4.7)
+
+; --- Light ------------------------------------------------------------------
+; A pendant with a visible fitting, and the lamp inside its shade rather than
+; floating in the air. Shadows are on for the room light only; the lamps and the
+; sunbeam would triple the shadow cost for very little.
+
+[node name="CeilingRose" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.383, -0.2)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.26, 0.034, 0.26)
+surface = "paint_satin"
+collide = false
+
+[node name="PendantRod" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, -0.2)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.022, 0.34, 0.022)
+surface = "chrome"
+collide = false
+
+[node name="PendantShade" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.97, -0.2)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.36, 0.22, 0.28)
+surface = "lampshade"
+color = Color(1, 0.94, 0.82, 1)
+emissive = true
+emission_energy = 1.6
+collide = false
+
+[node name="RoomLight" type="OmniLight3D" parent="." groups=["room_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, -0.2)
+light_color = Color(1, 0.95, 0.86, 1)
+light_energy = 2.4
+light_specular = 0.35
+shadow_enabled = true
+shadow_bias = 0.06
+omni_range = 7.5
+omni_attenuation = 1.6
+
+; Daylight through the window, aimed into the room and down. This is what makes
+; a patch of sun land on the floor and picks the dust out of the air where the
+; volumetric fog catches it. Basis: yaw 180 so it faces +Z into the room, then
+; pitched 25 degrees down.
+
+[node name="Sunbeam" type="SpotLight3D" parent="." groups=["daylight"]]
+transform = Transform3D(-1, 0, 0, 0, 0.9063, 0.4226, 0, 0.4226, -0.9063, 0, 2, -2.2)
+light_color = Color(1, 0.97, 0.9, 1)
+light_energy = 2.2
+light_specular = 0.5
+shadow_enabled = true
+shadow_bias = 0.05
+spot_range = 8.0
+spot_attenuation = 1.3
+spot_angle = 44.0
+spot_angle_attenuation = 0.6
+
+; --- Dressing: the window --------------------------------------------------
+
+[node name="CurtainPole" type="Node3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 2.14, -2.24)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.028, 2.1, 0.028)
+surface = "chrome"
+collide = false
+
+[node name="CurtainWestA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.98, 1.3, -2.2)
+script = ExtResource("2_prop")
+box_size = Vector3(0.17, 1.62, 0.1)
+surface = "linen"
+tint = Color(0.86, 0.84, 0.78, 1)
+corner_radius = 0.045
+collide = false
+
+[node name="CurtainWestB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.81, 1.3, -2.17)
+script = ExtResource("2_prop")
+box_size = Vector3(0.16, 1.62, 0.12)
+surface = "linen"
+tint = Color(0.92, 0.9, 0.84, 1)
+corner_radius = 0.05
+collide = false
+
+[node name="CurtainEastA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.98, 1.3, -2.2)
+script = ExtResource("2_prop")
+box_size = Vector3(0.17, 1.62, 0.1)
+surface = "linen"
+tint = Color(0.86, 0.84, 0.78, 1)
+corner_radius = 0.045
+collide = false
+
+[node name="CurtainEastB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.81, 1.3, -2.17)
+script = ExtResource("2_prop")
+box_size = Vector3(0.16, 1.62, 0.12)
+surface = "linen"
+tint = Color(0.92, 0.9, 0.84, 1)
+corner_radius = 0.05
+collide = false
+
+[node name="Radiator" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.33, -2.24)
+script = ExtResource("2_prop")
+box_size = Vector3(1.1, 0.5, 0.09)
+surface = "paint_satin"
+corner_radius = 0.012
+
+[node name="RadiatorTop" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.59, -2.235)
+script = ExtResource("2_prop")
+box_size = Vector3(1.12, 0.022, 0.11)
+surface = "paint_satin"
+collide = false
+
+[node name="RadiatorPipe" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.48, 0.14, -2.22)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.022, 0.28, 0.022)
+surface = "chrome"
+collide = false
+
+; --- Furniture: the rug ----------------------------------------------------
+
+[node name="Rug" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.05, 0.007, -0.3)
+script = ExtResource("2_prop")
+box_size = Vector3(2.4, 0.014, 1.8)
+surface = "wool_rug"
+roughness = 0.95
+corner_radius = 0.005
+collide = false
+
+; --- Hazard 1: the low, deep, armless sofa ---------------------------------
+; Deliberately NOT given arms by the dressing pass: the missing arms ARE the
+; hazard. The cushions and the throw are loose items only.
+
+[node name="SofaSeat" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.35, 0.2, -0.3)
+script = ExtResource("2_prop")
+box_size = Vector3(0.85, 0.4, 2.0)
+surface = "upholstery"
+corner_radius = 0.04
+
+[node name="SofaBack" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.71, 0.58, -0.3)
+script = ExtResource("2_prop")
+box_size = Vector3(0.16, 0.76, 2.0)
+surface = "upholstery"
+corner_radius = 0.05
+
+[node name="SofaCushions" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.3, 0.44, -0.3)
+script = ExtResource("2_prop")
+box_size = Vector3(0.75, 0.1, 1.9)
+surface = "upholstery"
+tint = Color(1.12, 1.1, 1.08, 1)
+corner_radius = 0.045
+collide = false
+
+[node name="SofaFootWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.35, 0.03, -1.15)
+script = ExtResource("2_prop")
+box_size = Vector3(0.7, 0.06, 0.09)
+surface = "walnut_wood"
+collide = false
+
+[node name="SofaFootEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.35, 0.03, 0.55)
+script = ExtResource("2_prop")
+box_size = Vector3(0.7, 0.06, 0.09)
+surface = "walnut_wood"
+collide = false
+
+[node name="ScatterCushionA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.56, 0.6, -1.0)
+script = ExtResource("2_prop")
+box_size = Vector3(0.14, 0.34, 0.34)
+surface = "upholstery"
+tint = Color(1.25, 0.95, 0.8, 1)
+corner_radius = 0.06
+collide = false
+
+[node name="ScatterCushionB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.56, 0.6, 0.35)
+script = ExtResource("2_prop")
+box_size = Vector3(0.14, 0.32, 0.32)
+surface = "upholstery"
+tint = Color(0.85, 0.95, 1.1, 1)
+corner_radius = 0.06
+collide = false
+
+[node name="SofaThrow" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.66, 0.78, 0.42)
+script = ExtResource("2_prop")
+box_size = Vector3(0.28, 0.46, 0.66)
+surface = "linen"
+tint = Color(0.78, 0.8, 0.84, 1)
+corner_radius = 0.05
+collide = false
+
+[node name="HazardLowSofa" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, 0.55, -0.3)
+script = ExtResource("3_hazard")
+hazard_id = "living_low_sofa"
+hazard_name = "Sofa too low and too soft to stand up from"
+room = "living_room"
+is_hazard = true
+explanation = "A low, deep seat with no arms has to be stood up from with the legs alone. Raise it on firm blocks, or sit in the armchair instead."
+extents = Vector3(1.2, 1.2, 2.2)
+label_height = 0.9
+
+; --- Hazard 2: the low glass coffee table ----------------------------------
+
+[node name="CoffeeTableTop" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0.37, -0.3)
+script = ExtResource("2_prop")
+box_size = Vector3(1.1, 0.03, 0.6)
+surface = "glass"
+corner_radius = 0.008
+
+[node name="CoffeeTableLegs" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0.18, -0.3)
+script = ExtResource("2_prop")
+box_size = Vector3(0.95, 0.35, 0.45)
+surface = "walnut_wood"
+corner_radius = 0.014
+
+[node name="TableBooks" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.16, 0.407, -0.34)
+script = ExtResource("2_prop")
+box_size = Vector3(0.25, 0.042, 0.19)
+surface = "paper"
+tint = Color(0.82, 0.78, 0.7, 1)
+corner_radius = 0.004
+collide = false
+
+[node name="TableMagazine" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.11, 0.437, -0.28)
+script = ExtResource("2_prop")
+box_size = Vector3(0.21, 0.018, 0.16)
+surface = "paper"
+corner_radius = 0.003
+collide = false
+
+[node name="TableRemote" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4, 0.396, -0.22)
+script = ExtResource("2_prop")
+box_size = Vector3(0.05, 0.019, 0.17)
+surface = "paint_dark"
+corner_radius = 0.008
+collide = false
+
+[node name="HazardCoffeeTable" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0.4, -0.3)
+script = ExtResource("3_hazard")
+hazard_id = "living_coffee_table"
+hazard_name = "Low glass coffee table in the walkway"
+room = "living_room"
+is_hazard = true
+explanation = "Low and see-through is the worst combination: the eye does not register it and the shin finds it. Move it out of the route between the door and the chairs."
+extents = Vector3(1.4, 0.9, 0.9)
+label_height = 0.6
+
+; --- Hazard 3: the trailing flex -------------------------------------------
+
+[node name="TVUnit" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 0.25, -1.3)
+script = ExtResource("2_prop")
+box_size = Vector3(0.45, 0.5, 1.4)
+surface = "walnut_wood"
+corner_radius = 0.016
+
+[node name="TVUnitDoorNorth" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.378, 0.27, -1.65)
+script = ExtResource("2_prop")
+box_size = Vector3(0.018, 0.4, 0.62)
+surface = "walnut_wood"
+tint = Color(1.08, 1.06, 1.04, 1)
+corner_radius = 0.01
+collide = false
+
+[node name="TVUnitDoorSouth" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.378, 0.27, -0.95)
+script = ExtResource("2_prop")
+box_size = Vector3(0.018, 0.4, 0.62)
+surface = "walnut_wood"
+tint = Color(1.08, 1.06, 1.04, 1)
+corner_radius = 0.01
+collide = false
+
+[node name="TVUnitHandles" type="Node3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 1.362, 0.27, -1.3)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.014, 0.34, 0.014)
+surface = "brushed_metal"
+collide = false
+
+[node name="Television" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.62, 0.85, -1.3)
+script = ExtResource("2_prop")
+box_size = Vector3(0.07, 0.62, 1.1)
+surface = "screen"
+corner_radius = 0.006
+collide = false
+
+[node name="TelevisionStand" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.62, 0.53, -1.3)
+script = ExtResource("2_prop")
+box_size = Vector3(0.22, 0.03, 0.42)
+surface = "paint_dark"
+corner_radius = 0.006
+collide = false
+
+[node name="Soundbar" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.54, 0.57, -1.3)
+script = ExtResource("2_prop")
+box_size = Vector3(0.07, 0.06, 0.78)
+surface = "paint_dark"
+corner_radius = 0.012
+collide = false
+
+[node name="TrailingFlex" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.63, 0.012, 0.6)
+script = ExtResource("2_prop")
+box_size = Vector3(1.95, 0.022, 0.022)
+surface = "rubber"
+corner_radius = 0.009
+collide = false
+
+[node name="TrailingFlexRun" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.58, 0.012, -0.1)
+script = ExtResource("2_prop")
+box_size = Vector3(0.022, 0.022, 1.4)
+surface = "rubber"
+corner_radius = 0.009
+collide = false
+
+[node name="HazardTrailingFlex" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.35, 0.6)
+script = ExtResource("3_hazard")
+hazard_id = "living_trailing_flex"
+hazard_name = "Television lead across the floor"
+room = "living_room"
+is_hazard = true
+explanation = "Run leads around the skirting board, never across the floor. A lead you step over every day is one you will eventually catch."
+; 100 mm shy of the sofa's aim volume, which ends at x = -0.80.
+extents = Vector3(2.4, 0.7, 0.6)
+label_height = 0.55
+
+[node name="SlipZoneFlex" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.63, 0.9, 0.6)
+script = ExtResource("4_slip")
+route_extents = Vector3(1.99, 0.3, 0.1)
+zone_id = "living_flex_trip"
+room = "living_room"
+linked_hazard_path = NodePath("../HazardTrailingFlex")
+warning_line = "Mind your feet. There is a lead across the floor here."
+; Warning volume. It must always CONTAIN the scored footprint below plus
+; contact_margin, or part of what is scored sits outside the volume that
+; starts watching for it. check_project.py enforces that.
+extents = Vector3(2.54, 2.0, 0.9)
+
+; --- Hazard 4: the footstool left in the doorway path -----------------------
+
+[node name="Footstool" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.15, 0.18, 1.35)
+script = ExtResource("2_prop")
+box_size = Vector3(0.5, 0.36, 0.5)
+surface = "upholstery"
+tint = Color(1.15, 1.02, 0.86, 1)
+corner_radius = 0.035
+
+[node name="FootstoolLegNW" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.33, 0.045, 1.17)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.04, 0.09, 0.04)
+surface = "oak_wood"
+collide = false
+
+[node name="FootstoolLegNE" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.03, 0.045, 1.17)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.04, 0.09, 0.04)
+surface = "oak_wood"
+collide = false
+
+[node name="FootstoolLegSW" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.33, 0.045, 1.53)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.04, 0.09, 0.04)
+surface = "oak_wood"
+collide = false
+
+[node name="FootstoolLegSE" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.03, 0.045, 1.53)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.04, 0.09, 0.04)
+surface = "oak_wood"
+collide = false
+
+[node name="HazardFootstool" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.15, 0.35, 1.35)
+script = ExtResource("3_hazard")
+hazard_id = "living_footstool"
+hazard_name = "Footstool left in the walkway"
+room = "living_room"
+is_hazard = true
+explanation = "Put it back beside the chair after you use it. Anything low, left where you walk, is a trip waiting for the one time you are not looking."
+extents = Vector3(0.8, 0.9, 0.8)
+label_height = 0.55
+
+; --- Decoy: the good chair -------------------------------------------------
+; Firm, 0.48 m seat, proper arms to push up on. Flagging it is free -- but
+; noticing how it differs from the sofa is the point of this room. Leather, so
+; it reads as a different and more solid piece of furniture at a glance.
+
+[node name="ArmchairSeat" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 0.24, 1.3)
+script = ExtResource("2_prop")
+box_size = Vector3(0.62, 0.48, 0.62)
+surface = "leather"
+corner_radius = 0.035
+
+[node name="ArmchairBack" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 0.66, 1.58)
+script = ExtResource("2_prop")
+box_size = Vector3(0.62, 0.55, 0.1)
+surface = "leather"
+corner_radius = 0.04
+
+[node name="ArmchairArmWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.02, 0.6, 1.28)
+script = ExtResource("2_prop")
+box_size = Vector3(0.09, 0.2, 0.6)
+surface = "leather"
+corner_radius = 0.04
+
+[node name="ArmchairArmEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.58, 0.6, 1.28)
+script = ExtResource("2_prop")
+box_size = Vector3(0.09, 0.2, 0.6)
+surface = "leather"
+corner_radius = 0.04
+
+[node name="ArmchairCushion" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 0.5, 1.28)
+script = ExtResource("2_prop")
+box_size = Vector3(0.52, 0.08, 0.52)
+surface = "leather"
+tint = Color(1.1, 1.06, 1.02, 1)
+corner_radius = 0.035
+collide = false
+
+[node name="ArmchairFootWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.08, 0.025, 1.08)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.05, 0.05, 0.05)
+surface = "walnut_wood"
+collide = false
+
+[node name="ArmchairFootEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.52, 0.025, 1.08)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.05, 0.05, 0.05)
+surface = "walnut_wood"
+collide = false
+
+[node name="DecoyArmchair" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 0.55, 1.35)
+script = ExtResource("3_hazard")
+hazard_id = "living_armchair"
+hazard_name = "Armchair with firm arms"
+room = "living_room"
+is_hazard = false
+extents = Vector3(0.9, 1.3, 0.9)
+
+; --- Furniture, no hazard --------------------------------------------------
+
+[node name="FloorLamp" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 0.75, 1.95)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.1, 1.5, 0.1)
+surface = "brushed_metal"
+
+[node name="FloorLampBase" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 0.015, 1.95)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.3, 0.03, 0.3)
+surface = "brushed_metal"
+collide = false
+
+[node name="FloorLampShade" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 1.62, 1.95)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.34, 0.26, 0.26)
+surface = "lampshade"
+color = Color(1, 0.93, 0.79, 1)
+emissive = true
+emission_energy = 1.8
+collide = false
+
+[node name="FloorLampLight" type="OmniLight3D" parent="." groups=["room_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 1.58, 1.95)
+light_color = Color(1, 0.89, 0.72, 1)
+light_energy = 1.5
+light_specular = 0.25
+omni_range = 4.2
+omni_attenuation = 1.8
+
+[node name="SideTable" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.62, 0.28, 0.5)
+script = ExtResource("2_prop")
+box_size = Vector3(0.45, 0.56, 0.45)
+surface = "walnut_wood"
+corner_radius = 0.016
+
+[node name="SideTableMug" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.58, 0.605, 0.45)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.085, 0.09, 0.085)
+surface = "ceramic"
+collide = false
+
+; --- Dressing: the things that make it a room ------------------------------
+
+[node name="PictureFrameA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.818, 1.72, -0.8)
+script = ExtResource("2_prop")
+box_size = Vector3(0.042, 0.52, 0.42)
+surface = "walnut_wood"
+corner_radius = 0.008
+collide = false
+
+[node name="PictureCanvasA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.803, 1.72, -0.8)
+script = ExtResource("2_prop")
+box_size = Vector3(0.016, 0.42, 0.32)
+surface = "paper"
+tint = Color(0.86, 0.88, 0.9, 1)
+corner_radius = 0.003
+collide = false
+
+[node name="PictureFrameB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.818, 1.66, 0.25)
+script = ExtResource("2_prop")
+box_size = Vector3(0.042, 0.4, 0.34)
+surface = "walnut_wood"
+corner_radius = 0.008
+collide = false
+
+[node name="PictureCanvasB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.803, 1.66, 0.25)
+script = ExtResource("2_prop")
+box_size = Vector3(0.016, 0.31, 0.25)
+surface = "paper"
+tint = Color(0.9, 0.86, 0.78, 1)
+corner_radius = 0.003
+collide = false
+
+[node name="PlantPot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.55, 0.14, 1.85)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.3, 0.28, 0.26)
+surface = "terracotta"
+
+[node name="PlantStem" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.55, 0.44, 1.85)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.035, 0.34, 0.035)
+surface = "foliage"
+tint = Color(0.7, 0.8, 0.6, 1)
+collide = false
+
+[node name="PlantFoliage" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.55, 0.78, 1.85)
+script = ExtResource("2_prop")
+kind = 2
+box_size = Vector3(0.56, 0.5, 0.56)
+surface = "foliage"
+collide = false
+
+[node name="PlantFoliageLow" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.42, 0.58, 1.96)
+script = ExtResource("2_prop")
+kind = 2
+box_size = Vector3(0.34, 0.3, 0.34)
+surface = "foliage"
+tint = Color(0.88, 1.06, 0.86, 1)
+collide = false
+
+[node name="LightSwitch" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.832, 1.05, 2.02)
+script = ExtResource("2_prop")
+box_size = Vector3(0.014, 0.09, 0.09)
+surface = "paint_satin"
+corner_radius = 0.004
+collide = false
+
+[node name="WallSocket" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.832, 0.24, -0.6)
+script = ExtResource("2_prop")
+box_size = Vector3(0.014, 0.08, 0.14)
+surface = "paint_satin"
+corner_radius = 0.004
+collide = false
+
+; --- Core System I: the walking route -------------------------------------
+; Finding a hazard and getting past one are different skills. These rings are
+; the second: cross the room, one ring at a time, without touching anything.
+; Some legs are deliberately NOT walkable in a straight line -- the direct path
+; goes through something -- so the task is to see that and go round. Every leg
+; was checked to have a clear path before it was placed here.
+
+[node name="Route" type="Node3D" parent="."]
+script = ExtResource("90_route")
+room = "living_room"
+start_line = "Now cross the room. Stand on each ring in turn, and keep clear of anything underfoot."
+
+[node name="Marker1" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.0, 1.95)
+script = ExtResource("91_marker")
+marker_id = "living_room_1"
+room = "living_room"
+label_text = "just inside the door"
+extents = Vector3(0.9, 3, 0.9)
+
+[node name="Marker2" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.05, 0.0, 1.9)
+script = ExtResource("91_marker")
+marker_id = "living_room_2"
+room = "living_room"
+label_text = "by the plant"
+extents = Vector3(0.9, 3, 0.9)
+
+[node name="Marker3" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0.0, 0.2)
+script = ExtResource("91_marker")
+marker_id = "living_room_3"
+room = "living_room"
+label_text = "by the side table"
+extents = Vector3(0.9, 3, 0.9)
+
+[node name="Marker4" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.0, -1.05)
+script = ExtResource("91_marker")
+marker_id = "living_room_4"
+room = "living_room"
+label_text = "beside the sofa"
+extents = Vector3(0.9, 3, 0.9)
+
+[node name="Marker5" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.75, 0.0, -1.15)
+script = ExtResource("91_marker")
+marker_id = "living_room_5"
+room = "living_room"
+label_text = "at the window"
+extents = Vector3(0.9, 3, 0.9)
+
+; --- Core System I: more hazard footprints ---------------------------------
+; Added with the walking route. These are the floor-level obstacles that had no
+; zone of their own, so walking into them was previously unrecorded. They warn
+; as the older zones do, and they give the route something to go round.
+
+[node name="SlipZoneCoffeeTable" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 1.0, -0.3)
+script = ExtResource("4_slip")
+zone_id = "living_table_knock"
+room = "living_room"
+linked_hazard_path = NodePath("../HazardCoffeeTable")
+warning_line = "Careful. That table is low and glass, and easy to walk into."
+extents = Vector3(1.7, 2, 1.2)
+route_extents = Vector3(1.15, 0.5, 0.65)
+
+[node name="SlipZoneFootstool" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.15, 1.0, 1.35)
+script = ExtResource("4_slip")
+zone_id = "living_footstool_trip"
+room = "living_room"
+linked_hazard_path = NodePath("../HazardFootstool")
+warning_line = "Mind the footstool. It is right where you walk."
+extents = Vector3(1.1, 2, 1.1)
+route_extents = Vector3(0.56, 0.5, 0.56)

@@ -1,0 +1,456 @@
+[gd_scene load_steps=8 format=3 uid="uid://cvrfp0roombed01"]
+
+[ext_resource type="Script" path="res://scripts/world/room_builder.gd" id="1_room"]
+[ext_resource type="Script" path="res://scripts/world/prop.gd" id="2_prop"]
+[ext_resource type="Script" path="res://scripts/world/hazard.gd" id="3_hazard"]
+[ext_resource type="Script" path="res://scripts/world/slip_zone.gd" id="4_slip"]
+[ext_resource type="Script" path="res://scripts/world/room_zone.gd" id="5_roomzone"]
+[ext_resource type="Script" path="res://scripts/world/room_route.gd" id="90_route"]
+[ext_resource type="Script" path="res://scripts/world/route_marker.gd" id="91_marker"]
+
+; ============================================================================
+;  BEDROOM  --  4.0 x 3.6 m, 2.4 m ceiling. Doorway on the +Z wall.
+;
+;  Hazards: a lamp too dim and too far from the bed to be usable at night, a
+;  chair with no armrests, and clutter directly on the bed-to-door path.
+;
+;  That path matters more than it looks. The single highest-risk journey in a
+;  domestic setting is bed to bathroom at night, half-awake, in poor light --
+;  so the clutter is placed exactly on it rather than tidily against a wall.
+;
+;  The balance exercise is run here because this room has the largest clear
+;  floor area; see main.tscn for the exercise node itself.
+; ============================================================================
+
+[node name="Bedroom" type="Node3D"]
+
+[node name="RoomBuilder" type="Node3D" parent="."]
+script = ExtResource("1_room")
+window_sill_height = 1.1
+window_openings = Array[Vector4]([Vector4(1, -1.15, 1.3, 1)])
+trim_surface = "paint_satin"
+ceiling_surface = "ceiling_plaster"
+wall_surface = "plaster_wall"
+floor_surface = "carpet"
+size = Vector2(4, 4.6)
+height = 2.4
+floor_color = Color(0.5, 0.42, 0.35, 1)
+wall_color = Color(0.82, 0.8, 0.83, 1)
+; Wall 0 (+Z) is the hallway's wall, doorway and all: building it here as well
+; would put two identical boxes in the same plane and make them flicker. This
+; room is 0.5 m longer than the hallway, so WallFillerEast below closes the bit
+; of the south wall the hallway does not cover.
+build_walls = Array[bool]([false, true, true, true])
+openings = Array[Vector4]([])
+
+[node name="RoomZone" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+script = ExtResource("5_roomzone")
+room = "bedroom"
+extents = Vector3(4, 2.4, 4.6)
+
+[node name="WallFillerEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.75, 1.2, 2.3)
+script = ExtResource("2_prop")
+box_size = Vector3(0.56, 2.4, 0.12)
+surface = "plaster_wall"
+color = Color(0.82, 0.8, 0.83, 1)
+
+[node name="BedroomLight" type="OmniLight3D" parent="." groups=["room_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 1.05, -1.95)
+light_color = Color(1, 0.9, 0.72, 1)
+light_energy = 0.4
+omni_range = 4.5
+
+; --- Furniture -------------------------------------------------------------
+
+[node name="Bed" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.15, 0.26, -1)
+script = ExtResource("2_prop")
+box_size = Vector3(1.4, 0.52, 2)
+corner_radius = 0.04
+surface = "linen"
+color = Color(0.36, 0.4, 0.47, 1)
+
+[node name="Pillow" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.15, 0.58, -1.75)
+script = ExtResource("2_prop")
+box_size = Vector3(1.1, 0.12, 0.4)
+corner_radius = 0.055
+surface = "linen"
+color = Color(0.93, 0.92, 0.9, 1)
+collide = false
+
+[node name="BedsideTable" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 0.28, -1.95)
+script = ExtResource("2_prop")
+box_size = Vector3(0.45, 0.56, 0.4)
+surface = "oak_wood"
+color = Color(0.42, 0.31, 0.23, 1)
+
+[node name="BedsideLamp" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 0.73, -1.95)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.18, 0.28, 0.18)
+emission_energy = 1.6
+surface = "lampshade"
+color = Color(0.95, 0.88, 0.68, 1)
+emissive = true
+collide = false
+
+[node name="Wardrobe" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 1, -2)
+script = ExtResource("2_prop")
+box_size = Vector3(1.1, 2, 0.55)
+corner_radius = 0.014
+surface = "walnut_wood"
+color = Color(0.38, 0.28, 0.21, 1)
+
+; --- Hazard 1: the armless chair -------------------------------------------
+; Modelled as a seat and a back and nothing else. Without armrests there is no
+; way to push up with the arms, so standing has to be done entirely with the
+; legs -- exactly the movement that fails first with age.
+
+[node name="ChairSeat" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.22, 1.1)
+script = ExtResource("2_prop")
+box_size = Vector3(0.45, 0.44, 0.45)
+surface = "oak_wood"
+color = Color(0.29, 0.35, 0.31, 1)
+
+[node name="ChairBack" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.66, 0.9)
+script = ExtResource("2_prop")
+box_size = Vector3(0.45, 0.45, 0.06)
+surface = "oak_wood"
+color = Color(0.29, 0.35, 0.31, 1)
+
+[node name="HazardArmlessChair" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.55, 1.05)
+script = ExtResource("3_hazard")
+hazard_id = "bed_armless_chair"
+hazard_name = "Chair with no armrests"
+room = "bedroom"
+is_hazard = true
+explanation = "With no armrests you cannot push yourself up. Choose a chair with arms and a firm seat."
+extents = Vector3(0.7, 1.2, 0.8)
+label_height = 0.75
+
+; --- Hazard 2: lighting too dim to get up to at night ----------------------
+
+[node name="HazardDimLight" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 0.78, -1.95)
+script = ExtResource("3_hazard")
+hazard_id = "bed_dim_light"
+hazard_name = "Bedroom light too dim"
+room = "bedroom"
+is_hazard = true
+explanation = "You need enough light to see the floor before your feet touch it. Keep a bright lamp you can reach from the bed."
+extents = Vector3(0.45, 0.55, 0.45)
+label_height = 0.4
+
+; --- Hazard 3: clutter on the bed-to-door path -----------------------------
+
+[node name="ClutterBox" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 0.09, 0.75)
+script = ExtResource("2_prop")
+box_size = Vector3(0.5, 0.18, 0.36)
+corner_radius = 0.008
+tint = Color(0.82, 0.7, 0.5, 1)
+surface = "paper"
+color = Color(0.62, 0.5, 0.33, 1)
+
+[node name="ClutterShoes" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.45, 0.05, 1.05)
+script = ExtResource("2_prop")
+box_size = Vector3(0.28, 0.1, 0.34)
+surface = "leather"
+color = Color(0.2, 0.17, 0.15, 1)
+collide = false
+
+[node name="ClutterBooks" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0.06, 1.15)
+script = ExtResource("2_prop")
+box_size = Vector3(0.24, 0.12, 0.3)
+surface = "paper"
+color = Color(0.35, 0.42, 0.55, 1)
+collide = false
+
+[node name="HazardFloorClutter" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 0.45, 0.95)
+script = ExtResource("3_hazard")
+hazard_id = "bed_floor_clutter"
+hazard_name = "Clutter on the path to the door"
+room = "bedroom"
+is_hazard = true
+explanation = "This is the route you take at night. Keep it completely clear from the bed all the way to the door."
+extents = Vector3(1.7, 0.9, 1.2)
+label_height = 0.6
+
+[node name="SlipZoneClutter" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 1, 0.95)
+script = ExtResource("4_slip")
+route_extents = Vector3(1.5, 0.3, 0.7)
+zone_id = "bed_clutter_trip"
+room = "bedroom"
+linked_hazard_path = NodePath("../HazardFloorClutter")
+warning_line = "Mind your step. There are things on the floor here."
+; Tight to the clutter itself. Entering the room to the left of it must be
+; possible, or every visit would log a near miss whatever the participant does.
+; Warning volume. It must always CONTAIN the scored footprint below plus
+; contact_margin, or part of what is scored sits outside the volume that
+; starts watching for it. check_project.py enforces that.
+extents = Vector3(2.15, 2.0, 1.5)
+
+; --- Decoy: the wardrobe is not a hazard -----------------------------------
+
+[node name="DecoyWardrobe" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 1.2, -2)
+script = ExtResource("3_hazard")
+hazard_id = "bed_wardrobe"
+hazard_name = "Wardrobe"
+room = "bedroom"
+is_hazard = false
+extents = Vector3(1.2, 2.1, 0.7)
+
+; --- Realism pass: a bedroom, curtains drawn ------------------------------
+; Nothing here is lit except the bedside lamp that was already there. The
+; pendant below has emissive = false on purpose -- see the note at the top.
+
+[node name="BedHeadboard" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.15, 0.62, -2.18)
+script = ExtResource("2_prop")
+box_size = Vector3(1.44, 0.85, 0.07)
+surface = "walnut_wood"
+corner_radius = 0.02
+collide = false
+
+[node name="Duvet" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.15, 0.56, -0.74)
+script = ExtResource("2_prop")
+box_size = Vector3(1.42, 0.12, 1.5)
+surface = "linen"
+tint = Color(0.9, 0.92, 0.96, 1)
+corner_radius = 0.05
+collide = false
+
+[node name="DuvetFold" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.15, 0.61, -1.48)
+script = ExtResource("2_prop")
+box_size = Vector3(1.42, 0.09, 0.3)
+surface = "linen"
+tint = Color(0.98, 0.99, 1, 1)
+corner_radius = 0.045
+collide = false
+
+[node name="PillowSecond" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.15, 0.66, -1.86)
+script = ExtResource("2_prop")
+box_size = Vector3(1.0, 0.11, 0.36)
+surface = "linen"
+corner_radius = 0.05
+collide = false
+
+[node name="BedFootRail" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.15, 0.28, 0.03)
+script = ExtResource("2_prop")
+box_size = Vector3(1.44, 0.4, 0.06)
+surface = "walnut_wood"
+corner_radius = 0.015
+collide = false
+
+[node name="BedsideRug" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.05, 0.008, -0.8)
+script = ExtResource("2_prop")
+box_size = Vector3(0.85, 0.016, 1.3)
+surface = "wool_rug"
+tint = Color(0.8, 0.84, 0.9, 1)
+corner_radius = 0.005
+collide = false
+
+[node name="CurtainPole" type="Node3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -1.15, 2.2, -2.2)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.026, 1.8, 0.026)
+surface = "walnut_wood"
+collide = false
+
+[node name="CurtainDrawnWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.52, 1.35, -2.18)
+script = ExtResource("2_prop")
+box_size = Vector3(0.75, 1.68, 0.09)
+surface = "linen"
+tint = Color(0.62, 0.6, 0.66, 1)
+corner_radius = 0.05
+collide = false
+
+[node name="CurtainDrawnEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.78, 1.35, -2.18)
+script = ExtResource("2_prop")
+box_size = Vector3(0.75, 1.68, 0.09)
+surface = "linen"
+tint = Color(0.66, 0.64, 0.7, 1)
+corner_radius = 0.05
+collide = false
+
+[node name="CurtainGap" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.15, 1.35, -2.22)
+script = ExtResource("2_prop")
+box_size = Vector3(0.05, 1.68, 0.03)
+surface = "linen"
+tint = Color(0.5, 0.49, 0.55, 1)
+collide = false
+
+[node name="CeilingRose" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.383, -0.3)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.2, 0.034, 0.2)
+surface = "paint_satin"
+collide = false
+
+[node name="PendantUnlit" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.15, -0.3)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.32, 0.24, 0.26)
+surface = "lampshade"
+tint = Color(0.72, 0.7, 0.68, 1)
+collide = false
+
+[node name="PendantCord" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.29, -0.3)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.012, 0.22, 0.012)
+surface = "rubber"
+collide = false
+
+[node name="WardrobeDoorWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.12, 1.02, -1.713)
+script = ExtResource("2_prop")
+box_size = Vector3(0.5, 1.86, 0.02)
+surface = "walnut_wood"
+tint = Color(1.1, 1.08, 1.05, 1)
+corner_radius = 0.01
+collide = false
+
+[node name="WardrobeDoorEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.66, 1.02, -1.713)
+script = ExtResource("2_prop")
+box_size = Vector3(0.5, 1.86, 0.02)
+surface = "walnut_wood"
+tint = Color(1.1, 1.08, 1.05, 1)
+corner_radius = 0.01
+collide = false
+
+[node name="WardrobeHandleWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.32, 1.05, -1.69)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.016, 0.16, 0.016)
+surface = "brushed_metal"
+collide = false
+
+[node name="WardrobeHandleEast" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.46, 1.05, -1.69)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.016, 0.16, 0.016)
+surface = "brushed_metal"
+collide = false
+
+[node name="BedsideGlass" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.32, 0.61, -1.9)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.07, 0.1, 0.07)
+surface = "glass"
+collide = false
+
+[node name="BedsideBook" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.11, 0.582, -1.98)
+script = ExtResource("2_prop")
+box_size = Vector3(0.15, 0.04, 0.21)
+surface = "paper"
+tint = Color(0.7, 0.62, 0.56, 1)
+corner_radius = 0.004
+collide = false
+
+[node name="BedroomRadiator" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.9, 0.33, 2.185)
+script = ExtResource("2_prop")
+box_size = Vector3(0.9, 0.5, 0.09)
+surface = "paint_satin"
+corner_radius = 0.012
+
+[node name="BedroomSwitch" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.832, 1.05, 1.8)
+script = ExtResource("2_prop")
+box_size = Vector3(0.014, 0.09, 0.09)
+surface = "paint_satin"
+corner_radius = 0.004
+collide = false
+
+[node name="BedroomPictureFrame" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.815, 1.6, 0.9)
+script = ExtResource("2_prop")
+box_size = Vector3(0.042, 0.44, 0.36)
+surface = "walnut_wood"
+corner_radius = 0.008
+collide = false
+
+[node name="BedroomPictureCanvas" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.8, 1.6, 0.9)
+script = ExtResource("2_prop")
+box_size = Vector3(0.016, 0.35, 0.27)
+surface = "paper"
+tint = Color(0.84, 0.8, 0.74, 1)
+corner_radius = 0.003
+collide = false
+
+; --- Core System I: the walking route -------------------------------------
+; Finding a hazard and getting past one are different skills. These rings are
+; the second: cross the room, one ring at a time, without touching anything.
+; Some legs are deliberately NOT walkable in a straight line -- the direct path
+; goes through something -- so the task is to see that and go round. Every leg
+; was checked to have a clear path before it was placed here.
+
+[node name="Route" type="Node3D" parent="."]
+script = ExtResource("90_route")
+room = "bedroom"
+start_line = "Now walk from the door to the wardrobe, ring by ring, keeping the floor clear."
+
+[node name="Marker1" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.9)
+script = ExtResource("91_marker")
+marker_id = "bedroom_1"
+room = "bedroom"
+label_text = "in the doorway"
+extents = Vector3(0.9, 3, 0.9)
+
+[node name="Marker2" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0, 0.1)
+script = ExtResource("91_marker")
+marker_id = "bedroom_2"
+room = "bedroom"
+label_text = "past the clutter"
+extents = Vector3(0.9, 3, 0.9)
+
+[node name="Marker3" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.05, 0, -1)
+script = ExtResource("91_marker")
+marker_id = "bedroom_3"
+room = "bedroom"
+label_text = "beside the bed"
+extents = Vector3(0.9, 3, 0.9)
+
+[node name="Marker4" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 0, -1.15)
+script = ExtResource("91_marker")
+marker_id = "bedroom_4"
+room = "bedroom"
+label_text = "at the wardrobe"
+extents = Vector3(0.9, 3, 0.9)

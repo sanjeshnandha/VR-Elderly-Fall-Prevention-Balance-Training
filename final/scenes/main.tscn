@@ -1,0 +1,299 @@
+[gd_scene format=3 uid="uid://da6wrgebe5rhu"]
+
+[ext_resource type="PackedScene" uid="uid://u1pgfghyqnlg" path="res://scenes/player/xr_player.tscn" id="1_player"]
+[ext_resource type="PackedScene" uid="uid://da626mcyddp3u" path="res://scenes/rooms/hallway.tscn" id="2_hall"]
+[ext_resource type="PackedScene" uid="uid://da626mcsdll3u" path="res://scenes/rooms/bathroom.tscn" id="3_bath"]
+[ext_resource type="PackedScene" uid="uid://bpn3jabds8km7" path="res://scenes/rooms/bedroom.tscn" id="4_bed"]
+[ext_resource type="PackedScene" uid="uid://cphkavfddd345" path="res://scenes/rooms/staircase.tscn" id="5_stair"]
+[ext_resource type="Script" uid="uid://gnir77i6kp03" path="res://scripts/ui/viewport_panel_3d.gd" id="6_panel"]
+[ext_resource type="PackedScene" uid="uid://bpn3l24fcoym7" path="res://scenes/ui/instruction_panel.tscn" id="7_instr"]
+[ext_resource type="PackedScene" uid="uid://cpkdxmwbk8q45" path="res://scenes/ui/debrief_panel.tscn" id="8_debrief"]
+[ext_resource type="Script" uid="uid://63gqicoevc5e" path="res://scripts/ui/wall_button.gd" id="9_button"]
+[ext_resource type="Script" uid="uid://dgubenulwuink" path="res://scripts/balance/balance_exercise.gd" id="10_balance"]
+[ext_resource type="Script" uid="uid://bcnkx5myfg6s5" path="res://scripts/balance/balance_orb.gd" id="11_orb"]
+[ext_resource type="Script" uid="uid://5kk311jvk60d" path="res://scripts/session_director.gd" id="12_director"]
+[ext_resource type="Script" uid="uid://c3max5vl44fgt" path="res://scripts/util/xr_tools_bridge.gd" id="13_bridge"]
+[ext_resource type="PackedScene" uid="uid://bpn3l2wfsmkm7" path="res://scenes/ui/performance_board.tscn" id="14_board"]
+[ext_resource type="Script" uid="uid://dhl1w0iqd8wv" path="res://scripts/world/focus_beacon.gd" id="15_beacon"]
+[ext_resource type="PackedScene" uid="uid://bpn3kfd4wo7m7" path="res://scenes/outdoor/street.tscn" id="16_street"]
+[ext_resource type="PackedScene" uid="uid://da626mc3lni3u" path="res://scenes/rooms/living_room.tscn" id="17_living"]
+[ext_resource type="PackedScene" uid="uid://da626mc2llg3u" path="res://scenes/rooms/kitchen.tscn" id="18_kitchen"]
+[ext_resource type="Script" uid="uid://6q4ehxpd60b8" path="res://scripts/util/graphics_quality.gd" id="19_quality"]
+[ext_resource type="Script" uid="uid://b8vy30ygykr62" path="res://scripts/world/day_night.gd" id="20_daynight"]
+
+[sub_resource type="ProceduralSkyMaterial" id="Sky_material"]
+sky_top_color = Color(0.42, 0.56, 0.78, 1)
+sky_horizon_color = Color(0.75, 0.78, 0.8, 1)
+ground_bottom_color = Color(0.36, 0.37, 0.35, 1)
+ground_horizon_color = Color(0.62, 0.62, 0.6, 1)
+sun_angle_max = 22.0
+
+[sub_resource type="Sky" id="Sky_day"]
+sky_material = SubResource("Sky_material")
+
+[sub_resource type="Environment" id="Env_house"]
+background_mode = 2
+background_color = Color(0.06, 0.06, 0.08, 1)
+sky = SubResource("Sky_day")
+ambient_light_source = 3
+ambient_light_color = Color(0.62, 0.64, 0.7, 1)
+reflected_light_source = 2
+tonemap_mode = 3
+tonemap_white = 6.0
+ssr_enabled = true
+ssr_max_steps = 56
+ssr_fade_in = 0.2
+ssr_fade_out = 2.5
+ssao_enabled = true
+ssao_radius = 1.1
+ssao_intensity = 2.2
+ssao_power = 1.6
+ssao_light_affect = 0.15
+ssil_enabled = true
+ssil_radius = 4.0
+sdfgi_enabled = true
+sdfgi_use_occlusion = true
+sdfgi_bounce_feedback = 0.6
+sdfgi_energy = 1.15
+glow_enabled = true
+glow_normalized = true
+glow_intensity = 0.45
+glow_bloom = 0.04
+glow_hdr_threshold = 1.05
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.007
+volumetric_fog_albedo = Color(0.93, 0.95, 1, 1)
+volumetric_fog_gi_inject = 0.7
+volumetric_fog_anisotropy = 0.25
+volumetric_fog_length = 48.0
+adjustment_enabled = true
+adjustment_contrast = 1.05
+adjustment_saturation = 1.08
+
+[node name="Main" type="Node3D" unique_id=421599483]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=577197936]
+environment = SubResource("Env_house")
+
+[node name="GraphicsQuality" type="Node" parent="." unique_id=1202260566]
+script = ExtResource("19_quality")
+world_environment_path = NodePath("../WorldEnvironment")
+
+[node name="DayNight" type="Node" parent="." unique_id=1202260567]
+script = ExtResource("20_daynight")
+
+[node name="SunThroughWindows" type="DirectionalLight3D" parent="." unique_id=1505417240]
+transform = Transform3D(0.86, -0.35, 0.37, 0, 0.73, 0.68, -0.51, -0.59, 0.63, 0, 4, 0)
+light_color = Color(1, 0.96, 0.89, 1)
+light_energy = 1.7
+light_angular_distance = 0.6
+light_specular = 0.6
+shadow_enabled = true
+shadow_bias = 0.04
+shadow_normal_bias = 1.5
+shadow_blur = 1.1
+directional_shadow_split_1 = 0.06
+directional_shadow_split_2 = 0.17
+directional_shadow_split_3 = 0.42
+directional_shadow_blend_splits = true
+directional_shadow_fade_start = 0.85
+directional_shadow_max_distance = 60.0
+
+[node name="House" type="Node3D" parent="." unique_id=1775434069]
+
+[node name="Hallway" parent="House" unique_id=971181332 instance=ExtResource("2_hall")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 0)
+
+[node name="LivingRoom" parent="House" unique_id=2034018032 instance=ExtResource("17_living")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.1, 0, -3.65)
+
+[node name="Kitchen" parent="House" unique_id=1145830181 instance=ExtResource("18_kitchen")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.1, 0, 3.15)
+
+[node name="Bathroom" parent="House" unique_id=937384806 instance=ExtResource("3_bath")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, -2.8)
+
+[node name="Bedroom" parent="House" unique_id=823623471 instance=ExtResource("4_bed")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, -3.6)
+
+[node name="Staircase" parent="House" unique_id=1810219913 instance=ExtResource("5_stair")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3.9)
+
+[node name="Street" parent="House" unique_id=1730101098 instance=ExtResource("16_street")]
+
+[node name="XRPlayer" parent="." unique_id=1000769076 instance=ExtResource("1_player")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -6, 0, 0)
+
+[node name="XRToolsBridge" type="Node" parent="XRPlayer" unique_id=1574445612]
+script = ExtResource("13_bridge")
+
+[node name="InstructionPanel" type="Node3D" parent="." unique_id=1689799544]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -7.85, 1.45, 0)
+script = ExtResource("6_panel")
+content_scene = ExtResource("7_instr")
+
+[node name="PerformanceBoard" type="Node3D" parent="." unique_id=335205992]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.2, 1.45, -1.2)
+script = ExtResource("6_panel")
+panel_size = Vector2(1.5, 1.15)
+viewport_size = Vector2i(2000, 1536)
+content_scene = ExtResource("14_board")
+
+[node name="DebriefPanel" type="Node3D" parent="." unique_id=949782794]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -7.8, 1.45, 0)
+visible = false
+script = ExtResource("6_panel")
+panel_size = Vector2(2, 1.2)
+viewport_size = Vector2i(2666, 1600)
+content_scene = ExtResource("8_debrief")
+
+[node name="ButtonStart" type="Area3D" parent="." unique_id=1769751479]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -7.88, 0.95, -0.93)
+collision_layer = 32
+collision_mask = 64
+script = ExtResource("9_button")
+label_text = "START"
+sub_label_text = "Begin the session"
+button_size = Vector2(0.28, 0.18)
+base_color = Color(0.18, 0.49, 0.2, 1)
+
+[node name="ButtonSeated" type="Area3D" parent="." unique_id=1397446702]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -7.88, 0.95, -0.31)
+collision_layer = 32
+collision_mask = 64
+script = ExtResource("9_button")
+label_text = "Seated mode"
+sub_label_text = "Currently: OFF"
+button_size = Vector2(0.28, 0.18)
+base_color = Color(0.16, 0.35, 0.55, 1)
+
+[node name="ButtonRepeat" type="Area3D" parent="." unique_id=1041884659]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -7.88, 0.95, 0.31)
+collision_layer = 32
+collision_mask = 64
+script = ExtResource("9_button")
+label_text = "Say that again"
+sub_label_text = "Repeat the instructions"
+button_size = Vector2(0.28, 0.18)
+base_color = Color(0.45, 0.35, 0.12, 1)
+
+[node name="ButtonSkip" type="Area3D" parent="." unique_id=997721110]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -7.88, 0.95, 0.93)
+collision_layer = 32
+collision_mask = 64
+script = ExtResource("9_button")
+label_text = "Skip talking"
+sub_label_text = "Stop the spoken instructions"
+button_size = Vector2(0.28, 0.18)
+base_color = Color(0.4, 0.2, 0.28, 1)
+
+[node name="ButtonBalance" type="Area3D" parent="." unique_id=1082864266]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 3.9, 0.95, -0.75)
+collision_layer = 32
+collision_mask = 64
+script = ExtResource("9_button")
+label_text = "Balance exercise"
+sub_label_text = "Start the reaching task"
+button_size = Vector2(0.3, 0.18)
+base_color = Color(0.35, 0.24, 0.5, 1)
+
+[node name="ButtonNight" type="Area3D" parent="." unique_id=1082864267]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 2.2, 0.95, 1.18)
+collision_layer = 32
+collision_mask = 64
+script = ExtResource("9_button")
+label_text = "Night mode"
+sub_label_text = "Currently: DAY"
+button_size = Vector2(0.3, 0.18)
+base_color = Color(0.17, 0.2, 0.42, 1)
+
+[node name="ButtonReset" type="Area3D" parent="." unique_id=1082864268]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 2.8, 0.95, 1.18)
+collision_layer = 32
+collision_mask = 64
+script = ExtResource("9_button")
+label_text = "Reset scores"
+sub_label_text = "Erase the saved history"
+button_size = Vector2(0.3, 0.18)
+base_color = Color(0.42, 0.16, 0.16, 1)
+
+[node name="ButtonAgain" type="Area3D" parent="." unique_id=1521095802]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 3.9, 0.95, 0)
+collision_layer = 32
+collision_mask = 64
+script = ExtResource("9_button")
+label_text = "GO AGAIN"
+sub_label_text = "Another session, starting with today's weakest room"
+button_size = Vector2(0.3, 0.18)
+base_color = Color(0.16, 0.35, 0.55, 1)
+enabled = false
+
+[node name="ButtonFinish" type="Area3D" parent="." unique_id=1055219125]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 3.9, 0.95, 0.75)
+collision_layer = 32
+collision_mask = 64
+script = ExtResource("9_button")
+label_text = "FINISH"
+sub_label_text = "End the session"
+button_size = Vector2(0.3, 0.18)
+base_color = Color(0.18, 0.49, 0.2, 1)
+enabled = false
+
+[node name="BalanceExercise" type="Node3D" parent="." unique_id=1215148595]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, -3.1)
+script = ExtResource("10_balance")
+
+[node name="BalanceOrb" type="Area3D" parent="BalanceExercise" unique_id=759356406]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+collision_layer = 8
+collision_mask = 64
+script = ExtResource("11_orb")
+
+[node name="FocusMarkers" type="Node3D" parent="." unique_id=912380918]
+
+[node name="hallway" type="Marker3D" parent="FocusMarkers" unique_id=1418882581]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0, 0.9)
+
+[node name="bathroom" type="Marker3D" parent="FocusMarkers" unique_id=1085803424]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, -0.75)
+
+[node name="bedroom" type="Marker3D" parent="FocusMarkers" unique_id=769879115]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, -0.75)
+
+[node name="staircase" type="Marker3D" parent="FocusMarkers" unique_id=890332004]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.9)
+
+[node name="living_room" type="Marker3D" parent="FocusMarkers" unique_id=1313151175]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.1, 0, -0.75)
+
+[node name="kitchen" type="Marker3D" parent="FocusMarkers" unique_id=1808913971]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.1, 0, 0.75)
+
+[node name="street" type="Marker3D" parent="FocusMarkers" unique_id=748496054]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, 0.5)
+
+[node name="street_crossing" type="Marker3D" parent="FocusMarkers" unique_id=748496055]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, 0.5)
+
+[node name="balance" type="Marker3D" parent="FocusMarkers" unique_id=1059243829]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.2, 0, -0.75)
+
+[node name="FocusBeacon" type="Node3D" parent="." unique_id=1137397622]
+script = ExtResource("15_beacon")
+markers_path = NodePath("../FocusMarkers")
+
+[node name="SessionDirector" type="Node" parent="." unique_id=1336493651]
+script = ExtResource("12_director")
+instruction_panel_path = NodePath("../InstructionPanel")
+debrief_panel_path = NodePath("../DebriefPanel")
+balance_exercise_path = NodePath("../BalanceExercise")
+focus_beacon_path = NodePath("../FocusBeacon")
+begin_button_path = NodePath("../ButtonStart")
+seated_button_path = NodePath("../ButtonSeated")
+repeat_button_path = NodePath("../ButtonRepeat")
+skip_button_path = NodePath("../ButtonSkip")
+balance_button_path = NodePath("../ButtonBalance")
+again_button_path = NodePath("../ButtonAgain")
+finish_button_path = NodePath("../ButtonFinish")
+night_button_path = NodePath("../ButtonNight")
+reset_button_path = NodePath("../ButtonReset")

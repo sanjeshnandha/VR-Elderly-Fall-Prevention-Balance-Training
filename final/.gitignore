@@ -1,0 +1,18 @@
+# Godot editor cache and imported resources -- machine-specific, never commit.
+.godot/
+/android/
+export_presets.cfg
+*.translation
+
+# Build output
+/build/
+*.tmp
+
+# Session backups made while fixing the project
+_backup_before_fixes/
+
+# macOS / Windows / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*~

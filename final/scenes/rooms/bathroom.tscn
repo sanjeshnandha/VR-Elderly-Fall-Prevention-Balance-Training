@@ -1,0 +1,448 @@
+[gd_scene load_steps=10 format=3 uid="uid://cvrfp0roombath01"]
+
+[ext_resource type="Script" path="res://scripts/world/room_builder.gd" id="1_room"]
+[ext_resource type="Script" path="res://scripts/world/prop.gd" id="2_prop"]
+[ext_resource type="Script" path="res://scripts/world/hazard.gd" id="3_hazard"]
+[ext_resource type="Script" path="res://scripts/world/grab_rail.gd" id="4_rail"]
+[ext_resource type="Script" path="res://scripts/world/slip_zone.gd" id="6_slip"]
+[ext_resource type="Script" path="res://scripts/world/room_zone.gd" id="7_roomzone"]
+[ext_resource type="Script" path="res://scripts/world/room_route.gd" id="90_route"]
+[ext_resource type="Script" path="res://scripts/world/route_marker.gd" id="91_marker"]
+[ext_resource type="Script" path="res://scripts/world/puddle.gd" id="30_puddle"]
+
+; ============================================================================
+;  BATHROOM  --  3.0 x 3.0 m, 2.4 m ceiling. Doorway on the +Z wall.
+;
+;  Hazards: wet tile floor (with a slip trigger), and no grab bar within reach
+;  of the point where you actually step into the bath.
+;
+;  The short bar that IS fitted sits at the far end of the tub -- a very common
+;  real-world installation error. There is something to hold; it is just not
+;  where you need it, which is exactly the "no grab bar" hazard. Because of
+;  that, rail COMPLIANCE is not scored in this room (see the note further
+;  down): it is measured on the stairs, where the rail is where it belongs.
+; ============================================================================
+
+[node name="Bathroom" type="Node3D"]
+
+[node name="RoomBuilder" type="Node3D" parent="."]
+script = ExtResource("1_room")
+glazing_surface = "glass_frosted"
+window_sill_height = 1.55
+window_openings = Array[Vector4]([Vector4(1, -0.3, 0.7, 0.55)])
+skirting = false
+trim_surface = "paint_satin"
+ceiling_surface = "ceiling_plaster"
+wall_surface = "subway_tile"
+floor_surface = "tile_floor"
+size = Vector2(3, 3)
+height = 2.4
+floor_color = Color(0.79, 0.82, 0.83, 1)
+wall_color = Color(0.87, 0.9, 0.9, 1)
+; Wall 0 (+Z) is the hallway's wall, doorway and all: building it here as well
+; would put two identical boxes in the same plane and make them flicker.
+build_walls = Array[bool]([false, true, true, true])
+openings = Array[Vector4]([])
+
+[node name="RoomZone" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+script = ExtResource("7_roomzone")
+room = "bathroom"
+extents = Vector3(3, 2.4, 3)
+
+[node name="RoomLight" type="OmniLight3D" parent="." groups=["room_light"]]
+shadow_bias = 0.06
+shadow_enabled = true
+omni_attenuation = 1.6
+light_specular = 0.4
+light_color = Color(1, 0.97, 0.94, 1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.15, 0)
+light_energy = 2.2
+omni_range = 6.0
+
+; --- Fixtures --------------------------------------------------------------
+
+[node name="Bathtub" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 0.275, -1.05)
+script = ExtResource("2_prop")
+box_size = Vector3(1.7, 0.55, 0.75)
+corner_radius = 0.05
+surface = "ceramic"
+color = Color(0.95, 0.95, 0.94, 1)
+roughness = 0.25
+
+[node name="TubInner" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 0.48, -1.05)
+script = ExtResource("2_prop")
+box_size = Vector3(1.5, 0.12, 0.6)
+tint = Color(0.94, 0.97, 1, 1)
+surface = "ceramic"
+color = Color(0.86, 0.9, 0.92, 1)
+roughness = 0.15
+collide = false
+
+[node name="Sink" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0.42, -1.2)
+script = ExtResource("2_prop")
+box_size = Vector3(0.55, 0.85, 0.4)
+corner_radius = 0.03
+surface = "ceramic"
+color = Color(0.95, 0.95, 0.94, 1)
+roughness = 0.25
+
+[node name="Toilet" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.15, 0.2, 0.35)
+script = ExtResource("2_prop")
+box_size = Vector3(0.4, 0.4, 0.6)
+corner_radius = 0.05
+surface = "ceramic"
+color = Color(0.95, 0.95, 0.94, 1)
+roughness = 0.25
+
+[node name="TowelRail" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 1.4, 1.25, 0.9)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.03, 0.6, 0.03)
+surface = "chrome"
+color = Color(0.8, 0.8, 0.83, 1)
+metallic = 0.6
+roughness = 0.3
+collide = false
+
+; --- The wet patch ---------------------------------------------------------
+; Low roughness + slight metallic reads as a sheen of standing water without
+; needing a custom shader or a normal map.
+
+[node name="WetFloor" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4, 0, 0.05)
+script = ExtResource("30_puddle")
+; Was a 10 mm rounded box, pale blue, 35% metallic, 75% opaque -- which is
+; four wrong answers about water at once. See puddle.gd.
+size = Vector2(1.7, 1.3)
+shape_seed = 1
+; No damp ring. It was tried at 0.26 and again at 0.10 and both read as a
+; tidemark rather than as wet floor -- see puddle.gd. Set damp_margin above
+; zero to bring it back.
+damp_margin = 0.0
+
+[node name="HazardWetFloor" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4, 0.25, 0.42)
+script = ExtResource("3_hazard")
+hazard_id = "bathroom_wet_floor"
+hazard_name = "Wet tile floor"
+room = "bathroom"
+is_hazard = true
+explanation = "Wet tile is one of the most slippery surfaces in the house. Dry it or wait before stepping on it."
+; The band of wet tile beyond the bath mat; see HazardBathMat.
+extents = Vector3(1.7, 0.5, 0.56)
+label_height = 0.7
+; Named rather than inferred. The volume covers only the band of the patch that
+; is NOT under the bath mat, so 43% of the water sits inside it -- just under
+; the fraction hazard.gd needs before it lights a mesh up, which would have left
+; the wet floor the one hazard in the house with no glow. The puddle builds its
+; surface at run time as a child called "Water"; see puddle.gd `_rebuild()`.
+highlight_meshes = Array[NodePath]([NodePath("../WetFloor/Water")])
+
+[node name="SlipZoneWetFloor" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4, 1, 0.05)
+script = ExtResource("6_slip")
+; Measured against the puddle mesh: this is the largest rectangle of which
+; 95% is actually under water. The visible spill is irregular, so a
+; footprint drawn to its bounding box would penalise dry corners.
+route_extents = Vector3(1.33, 0.3, 1.01)
+zone_id = "bathroom_wet_floor_slip"
+room = "bathroom"
+linked_hazard_path = NodePath("../HazardWetFloor")
+warning_line = "Careful. This floor is wet and slippery."
+; Warning volume: 0.25 m of approach before the spoken line. Nothing is
+; scored against it -- see route_extents.
+extents = Vector3(2.2, 2.0, 2.2)
+
+[node name="HazardNoGrabBar" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.05, 1.06, -0.6)
+script = ExtResource("3_hazard")
+hazard_id = "bathroom_no_grab_bar"
+hazard_name = "No grab bar where you step in"
+room = "bathroom"
+is_hazard = true
+explanation = "There is nothing to hold at the end of the bath you actually step into. A grab bar here gives you something solid."
+; Raised to where a grab bar would actually be fitted -- above the tub rim,
+; on the wall -- so it is not a third volume competing for the same patch of
+; floor as the mat and the wet tile.
+extents = Vector3(0.8, 0.88, 0.7)
+label_height = 0.75
+
+; --- Hazard: the bath mat that slides ---------------------------------------
+
+[node name="BathMat" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 0.009, -0.25)
+script = ExtResource("2_prop")
+box_size = Vector3(0.9, 0.018, 0.6)
+corner_radius = 0.006
+tint = Color(0.92, 0.82, 0.8, 1)
+surface = "carpet"
+color = Color(0.72, 0.62, 0.6, 1)
+roughness = 0.95
+collide = false
+
+[node name="HazardBathMat" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 0.16, -0.25)
+script = ExtResource("3_hazard")
+hazard_id = "bathroom_bath_mat"
+hazard_name = "Bath mat with no grip underneath"
+room = "bathroom"
+is_hazard = true
+explanation = "A mat that slides on wet tile is worse than no mat at all. Use one with a rubber backing, or fix it down."
+; Low and tight to the mat. The mat lies ON the wet floor, so the two can
+; only be told apart by where you point: this one owns the mat, and the wet
+; floor owns the tile the mat does not cover.
+extents = Vector3(1.0, 0.32, 0.72)
+label_height = 0.55
+
+; A safe object. Flagging it is logged as a false positive, not punished --
+; over-caution is a habit worth encouraging in this population.
+
+[node name="DecoyTowelRail" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4, 1.25, 0.9)
+script = ExtResource("3_hazard")
+hazard_id = "bathroom_towel_rail"
+hazard_name = "Towel rail"
+room = "bathroom"
+is_hazard = false
+extents = Vector3(0.25, 0.3, 0.7)
+
+; --- The grab bar that IS fitted -------------------------------------------
+;
+; It is at the FAR end of the tub, which is the hazard: there is nothing to
+; hold where you actually step in ("bathroom_no_grab_bar"). It is still a real
+; GrabRail, so it glows and can be held.
+;
+; There is deliberately NO HandrailZone here. Scoring the participant for not
+; holding a bar that this scenario says is in the wrong place contradicts the
+; hazard they are being asked to spot, and the zone covered most of the
+; bathroom floor, so simply walking in triggered "try using the rail here".
+; Rail compliance is measured on the stairs, where the rail is where it should
+; be. (To score bath transfers, move the bar to the step-in end first and then
+; add a HandrailZone over that step-in area only.)
+
+[node name="TubGrabBar" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.05, 0.85, -1.38)
+script = ExtResource("4_rail")
+rail_id = "bathroom_tub_bar"
+span = 0.3
+radius = 0.018
+rail_color = Color(0.85, 0.86, 0.88, 1)
+
+; --- Realism pass: a bathroom that has been used -------------------------
+; The shower screen has collide = false on purpose: a real screen would be in
+; the way, but this one must not be able to block the arc or come between the
+; hand and the grab bar the exercise is about.
+
+[node name="CeilingFitting" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.355, 0)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.3, 0.09, 0.3)
+surface = "lampshade"
+color = Color(1, 0.97, 0.92, 1)
+emissive = true
+emission_energy = 1.4
+collide = false
+
+[node name="ExtractorFan" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 2.378, 0.9)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.16, 0.04, 0.16)
+surface = "paint_satin"
+collide = false
+
+[node name="MirrorCabinet" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 1.5, -1.36)
+script = ExtResource("2_prop")
+box_size = Vector3(0.62, 0.62, 0.17)
+surface = "paint_satin"
+corner_radius = 0.01
+collide = false
+
+[node name="MirrorCabinetGlass" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 1.5, -1.268)
+script = ExtResource("2_prop")
+box_size = Vector3(0.55, 0.55, 0.016)
+surface = "mirror"
+corner_radius = 0.003
+collide = false
+
+[node name="SinkTap" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0.91, -1.33)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.032, 0.14, 0.032)
+surface = "chrome"
+collide = false
+
+[node name="SinkSpout" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0.975, -1.27)
+script = ExtResource("2_prop")
+box_size = Vector3(0.026, 0.026, 0.14)
+surface = "chrome"
+corner_radius = 0.01
+collide = false
+
+[node name="SinkPedestal" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0.15, -1.22)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.2, 0.3, 0.2)
+surface = "ceramic"
+collide = false
+
+[node name="BathTaps" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.22, 0.63, -1.05)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.035, 0.15, 0.035)
+surface = "chrome"
+collide = false
+
+[node name="ShowerRail" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.3, 1.45, -1.05)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.022, 1.5, 0.022)
+surface = "chrome"
+collide = false
+
+[node name="ShowerHead" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.22, 2.05, -1.05)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.11, 0.05, 0.11)
+surface = "chrome"
+collide = false
+
+[node name="ShowerScreen" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.27, 1.15, -1.05)
+script = ExtResource("2_prop")
+box_size = Vector3(0.018, 1.2, 0.72)
+surface = "glass"
+corner_radius = 0.005
+collide = false
+
+[node name="Cistern" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.37, 0.62, 0.35)
+script = ExtResource("2_prop")
+box_size = Vector3(0.17, 0.46, 0.5)
+surface = "ceramic"
+corner_radius = 0.02
+collide = false
+
+[node name="ToiletSeat" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.15, 0.425, 0.35)
+script = ExtResource("2_prop")
+box_size = Vector3(0.38, 0.045, 0.5)
+surface = "ceramic"
+corner_radius = 0.02
+collide = false
+
+[node name="ToiletLid" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.13, 0.6, 0.11)
+script = ExtResource("2_prop")
+box_size = Vector3(0.36, 0.035, 0.3)
+surface = "ceramic"
+corner_radius = 0.015
+collide = false
+
+[node name="ToiletRollHolder" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 1.4, 0.72, -0.2)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.11, 0.12, 0.11)
+surface = "paper"
+collide = false
+
+[node name="HandTowel" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.35, 1.0, 0.9)
+script = ExtResource("2_prop")
+box_size = Vector3(0.08, 0.52, 0.34)
+surface = "linen"
+tint = Color(0.86, 0.9, 0.94, 1)
+corner_radius = 0.035
+collide = false
+
+[node name="ShampooTall" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1, 0.66, -0.78)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.07, 0.22, 0.07)
+surface = "paint_dark"
+tint = Color(1.6, 1.7, 2.0, 1)
+collide = false
+
+[node name="ShampooShort" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0.63, -0.78)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.065, 0.16, 0.065)
+surface = "paint_red"
+collide = false
+
+[node name="BathroomBin" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.28, 0.15, 1.2)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.24, 0.3, 0.24)
+surface = "brushed_metal"
+collide = false
+
+; --- Core System I: the walking route -------------------------------------
+; Finding a hazard and getting past one are different skills. These rings are
+; the second: cross the room, one ring at a time, without touching anything.
+; Some legs are deliberately NOT walkable in a straight line -- the direct path
+; goes through something -- so the task is to see that and go round. Every leg
+; was checked to have a clear path before it was placed here.
+
+[node name="Route" type="Node3D" parent="."]
+script = ExtResource("90_route")
+room = "bathroom"
+start_line = "Now cross the bathroom to the basin, keeping off anything slippery."
+
+[node name="Marker1" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 0.0, 1.15)
+script = ExtResource("91_marker")
+marker_id = "bathroom_1"
+room = "bathroom"
+label_text = "in the doorway"
+extents = Vector3(0.9, 3, 0.9)
+
+[node name="Marker2" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.05, 0.0, 0.9)
+script = ExtResource("91_marker")
+marker_id = "bathroom_2"
+room = "bathroom"
+label_text = "by the bath"
+extents = Vector3(0.9, 3, 0.9)
+
+[node name="Marker3" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0.0, -0.45)
+script = ExtResource("91_marker")
+marker_id = "bathroom_3"
+room = "bathroom"
+label_text = "at the basin"
+extents = Vector3(0.9, 3, 0.9)
+
+; --- Core System I: more hazard footprints ---------------------------------
+; Added with the walking route. These are the floor-level obstacles that had no
+; zone of their own, so walking into them was previously unrecorded. They warn
+; as the older zones do, and they give the route something to go round.
+
+[node name="SlipZoneBathMat" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 1.0, -0.25)
+script = ExtResource("6_slip")
+zone_id = "bathroom_mat_slip"
+room = "bathroom"
+linked_hazard_path = NodePath("../HazardBathMat")
+warning_line = "Careful. That mat slides on wet tile."
+extents = Vector3(1.3, 2, 1.0)
+route_extents = Vector3(0.92, 0.3, 0.62)

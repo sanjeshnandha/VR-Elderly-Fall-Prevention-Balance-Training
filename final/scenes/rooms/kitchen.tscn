@@ -1,0 +1,656 @@
+[gd_scene format=3 uid="uid://da626mc2llg3u"]
+
+[ext_resource type="Script" path="res://scripts/world/room_builder.gd" id="1_room"]
+[ext_resource type="Script" path="res://scripts/world/prop.gd" id="2_prop"]
+[ext_resource type="Script" path="res://scripts/world/hazard.gd" id="3_hazard"]
+[ext_resource type="Script" path="res://scripts/world/slip_zone.gd" id="4_slip"]
+[ext_resource type="Script" path="res://scripts/world/room_zone.gd" id="5_roomzone"]
+[ext_resource type="Script" path="res://scripts/world/room_route.gd" id="90_route"]
+[ext_resource type="Script" path="res://scripts/world/route_marker.gd" id="91_marker"]
+[ext_resource type="Script" path="res://scripts/world/puddle.gd" id="30_puddle"]
+
+; ============================================================================
+;  KITCHEN  --  3.8 x 3.7 m, 2.4 m ceiling. Doorway on the -Z wall.
+;
+;  After the stairs and the bathroom, the kitchen is where the serious
+;  domestic falls happen, and they have a particular shape: the fall is caused
+;  by REACHING, not by walking.
+;
+;  Hazards
+;    high shelf      everyday things stored above shoulder height. Reaching up
+;                    and back shifts the centre of mass behind the heels --
+;                    the classic kitchen fall, and the reason for the stool.
+;    step stool      a light, wobbly stool with no handhold, left out because
+;                    it is needed daily. Standing on it is worse than the
+;                    reach it avoids.
+;    wet floor       a spill by the sink on hard tile.
+;    cupboard door   a low door left open across the walkway, at exactly shin
+;                    height and below the natural line of sight.
+;
+;  The kettle is the decoy: an ordinary thing in an ordinary place.
+; ============================================================================
+
+[node name="Kitchen" type="Node3D"]
+
+[node name="RoomBuilder" type="Node3D" parent="."]
+script = ExtResource("1_room")
+window_sill_height = 1.075
+window_openings = Array[Vector4]([Vector4(0, -0.2, 1.3, 0.95)])
+trim_surface = "paint_satin"
+ceiling_surface = "ceiling_plaster"
+wall_surface = "plaster_wall"
+floor_surface = "slate_floor"
+size = Vector2(3.8, 3.7)
+height = 2.4
+floor_color = Color(0.74, 0.72, 0.68, 1)
+wall_color = Color(0.88, 0.88, 0.85, 1)
+; Wall 1 (-Z) is the hallway's wall, doorway and all.
+build_walls = Array[bool]([true, false, true, true])
+openings = Array[Vector4]([])
+
+[node name="RoomZone" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+script = ExtResource("5_roomzone")
+room = "kitchen"
+extents = Vector3(3.8, 2.4, 3.7)
+
+[node name="RoomLight" type="OmniLight3D" parent="." groups=["room_light"]]
+shadow_bias = 0.06
+shadow_enabled = true
+omni_attenuation = 1.6
+light_specular = 0.35
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.15, 0)
+light_color = Color(1, 0.97, 0.92, 1)
+light_energy = 2.3
+omni_range = 6.5
+
+[node name="WindowLight" type="SpotLight3D" parent="." groups=["daylight"]]
+transform = Transform3D(1, 0, 0, 0, 0.9063, 0.4226, 0, -0.4226, 0.9063, -0.2, 1.7, 1.6)
+light_color = Color(1, 0.97, 0.9, 1)
+light_energy = 2.1
+light_specular = 0.5
+shadow_enabled = true
+shadow_bias = 0.05
+spot_range = 7.5
+spot_attenuation = 1.3
+spot_angle = 46.0
+spot_angle_attenuation = 0.6
+
+[node name="CounterWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.56, 0.45, -0.1)
+script = ExtResource("2_prop")
+box_size = Vector3(0.65, 0.9, 3.3)
+surface = "paint_satin"
+color = Color(0.8, 0.78, 0.74, 1)
+
+[node name="CounterSouth" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 0.45, 1.53)
+script = ExtResource("2_prop")
+box_size = Vector3(3.15, 0.9, 0.65)
+surface = "paint_satin"
+color = Color(0.8, 0.78, 0.74, 1)
+
+[node name="Worktop" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.56, 0.92, -0.1)
+script = ExtResource("2_prop")
+box_size = Vector3(0.68, 0.05, 3.34)
+surface = "quartz"
+color = Color(0.32, 0.3, 0.29, 1)
+collide = false
+
+[node name="WorktopSouth" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 0.92, 1.53)
+script = ExtResource("2_prop")
+box_size = Vector3(3.19, 0.05, 0.68)
+surface = "quartz"
+color = Color(0.32, 0.3, 0.29, 1)
+collide = false
+
+[node name="Sink" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.56, 0.9, 1.2)
+script = ExtResource("2_prop")
+box_size = Vector3(0.5, 0.14, 0.6)
+surface = "brushed_metal"
+color = Color(0.86, 0.87, 0.88, 1)
+metallic = 0.5
+collide = false
+
+[node name="Oven" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 0.45, 1.53)
+script = ExtResource("2_prop")
+box_size = Vector3(0.6, 0.88, 0.62)
+corner_radius = 0.012
+surface = "steel_dark"
+color = Color(0.22, 0.23, 0.25, 1)
+
+[node name="Fridge" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.85, -1.3)
+script = ExtResource("2_prop")
+box_size = Vector3(0.68, 1.7, 0.66)
+corner_radius = 0.016
+surface = "brushed_metal"
+color = Color(0.85, 0.86, 0.88, 1)
+metallic = 0.3
+
+[node name="WallCupboards" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.72, 1.75, 0.6)
+script = ExtResource("2_prop")
+box_size = Vector3(0.33, 0.7, 1.9)
+surface = "paint_satin"
+color = Color(0.82, 0.8, 0.76, 1)
+
+[node name="Table" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0.37, -0.75)
+script = ExtResource("2_prop")
+box_size = Vector3(0.95, 0.74, 0.95)
+corner_radius = 0.014
+surface = "oak_wood"
+color = Color(0.5, 0.38, 0.27, 1)
+
+; --- Hazard 1: everyday things stored too high -----------------------------
+
+[node name="HighShelf" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.72, 1.98, -1.1)
+script = ExtResource("2_prop")
+box_size = Vector3(0.32, 0.04, 0.95)
+surface = "oak_wood"
+color = Color(0.72, 0.66, 0.56, 1)
+
+[node name="ShelfBoxes" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.72, 2.12, -1.1)
+script = ExtResource("2_prop")
+box_size = Vector3(0.28, 0.24, 0.8)
+tint = Color(0.86, 0.74, 0.54, 1)
+surface = "paper"
+color = Color(0.68, 0.57, 0.4, 1)
+collide = false
+
+[node name="HazardHighShelf" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.62, 2.05, -1.1)
+script = ExtResource("3_hazard")
+hazard_id = "kitchen_high_shelf"
+hazard_name = "Everyday things stored too high"
+room = "kitchen"
+is_hazard = true
+explanation = "Reaching above your shoulders takes your balance backwards over your heels. Keep what you use daily between hip and shoulder height."
+extents = Vector3(0.6, 0.7, 1.2)
+label_height = 0.45
+
+; --- Hazard 2: the step stool ----------------------------------------------
+
+[node name="StepStool" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0.21, -0.9)
+script = ExtResource("2_prop")
+box_size = Vector3(0.42, 0.42, 0.34)
+surface = "brushed_metal"
+color = Color(0.6, 0.6, 0.63, 1)
+metallic = 0.4
+
+[node name="HazardStepStool" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0.35, -0.9)
+script = ExtResource("3_hazard")
+hazard_id = "kitchen_step_stool"
+hazard_name = "Wobbly step stool with nothing to hold"
+room = "kitchen"
+is_hazard = true
+explanation = "A stool with no handrail is worse than the reach it saves. Use a steady step with a handle, and never a chair."
+extents = Vector3(0.7, 0.9, 0.7)
+label_height = 0.5
+
+; --- Hazard 3: the spill by the sink ---------------------------------------
+
+[node name="WetFloor" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0, 1)
+script = ExtResource("30_puddle")
+; Was a 10 mm rounded box, pale blue, 35% metallic, 75% opaque -- which is
+; four wrong answers about water at once. See puddle.gd.
+size = Vector2(1.2, 1.1)
+shape_seed = 2
+; No damp ring; see bathroom.tscn.
+damp_margin = 0.0
+; A touch more opaque than the bathroom's: on dark slate a thinner film is read
+; almost entirely by its reflection, which is the one cue the Smooth graphics
+; level does not have. Both values came down with the defaults -- see
+; puddle.gd: the pair of them were what made the spill read as a lamp on the
+; floor rather than as water.
+water_tint = Color(0.38, 0.44, 0.48, 1)
+opacity = 0.45
+
+[node name="HazardWetFloor" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0.5, 1.0)
+script = ExtResource("3_hazard")
+hazard_id = "kitchen_wet_floor"
+hazard_name = "Spill on the kitchen floor"
+room = "kitchen"
+is_hazard = true
+explanation = "Wipe a spill the moment it happens. Hard kitchen tile with water on it is as slippery as the bathroom."
+extents = Vector3(1.3, 1.0, 1.2)
+label_height = 0.7
+; Named rather than inferred. This volume is deliberately a metre tall so it is
+; easy to aim at from standing, which means the overlap rule would otherwise
+; light up the sink, two cupboard doors and the fruit bowl above the spill
+; instead of the spill itself. See puddle.gd `_rebuild()` for the child name.
+highlight_meshes = Array[NodePath]([NodePath("../WetFloor/Water")])
+
+[node name="SlipZoneWetFloor" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 1.0, 1.0)
+script = ExtResource("4_slip")
+; 95% of this rectangle is under water; see bathroom.tscn.
+route_extents = Vector3(0.94, 0.3, 0.86)
+zone_id = "kitchen_spill_slip"
+room = "kitchen"
+linked_hazard_path = NodePath("../HazardWetFloor")
+warning_line = "Careful. The floor is wet just there."
+; Warning volume: 0.35 m of approach before the spoken line. Nothing is
+; scored against it -- see route_extents.
+extents = Vector3(1.9, 2.0, 1.7)
+
+; --- Hazard 4: the cupboard door left open ---------------------------------
+
+[node name="OpenCupboardDoor" type="Node3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -0.95, 0.42, 0.1)
+script = ExtResource("2_prop")
+box_size = Vector3(0.58, 0.72, 0.04)
+surface = "paint_satin"
+color = Color(0.78, 0.76, 0.72, 1)
+
+[node name="HazardOpenDoor" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0.42, 0.02)
+script = ExtResource("3_hazard")
+hazard_id = "kitchen_open_door"
+hazard_name = "Cupboard door left open across the walkway"
+room = "kitchen"
+is_hazard = true
+explanation = "A low door standing open sits at shin height, below where you are looking. Close each one as you finish with it."
+; Pulled back clear of the spill's aim volume, which starts at z = 0.40.
+extents = Vector3(0.5, 0.9, 0.6)
+label_height = 0.6
+
+; --- Decoy: the kettle -----------------------------------------------------
+
+[node name="Kettle" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 1.07, 1.45)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.2, 0.26, 0.2)
+surface = "brushed_metal"
+color = Color(0.72, 0.73, 0.76, 1)
+metallic = 0.5
+
+[node name="DecoyKettle" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 1.1, 1.45)
+script = ExtResource("3_hazard")
+hazard_id = "kitchen_kettle"
+hazard_name = "Kettle"
+room = "kitchen"
+is_hazard = false
+extents = Vector3(0.4, 0.5, 0.4)
+
+; --- Realism pass: a fitted kitchen ---------------------------------------
+
+[node name="CeilingRose" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.383, 0)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.2, 0.034, 0.2)
+surface = "paint_satin"
+collide = false
+
+[node name="CeilingShade" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.34, 0.2, 0.26)
+surface = "lampshade"
+color = Color(1, 0.97, 0.9, 1)
+emissive = true
+emission_energy = 1.5
+collide = false
+
+[node name="SplashbackWest" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.836, 1.17, -0.1)
+script = ExtResource("2_prop")
+box_size = Vector3(0.014, 0.45, 3.3)
+surface = "subway_tile"
+collide = false
+
+[node name="SplashbackSouth" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.15, 1.005, 1.836)
+script = ExtResource("2_prop")
+box_size = Vector3(2.1, 0.125, 0.014)
+surface = "subway_tile"
+collide = false
+
+[node name="UnitDoorWestA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.223, 0.52, -1.2)
+script = ExtResource("2_prop")
+box_size = Vector3(0.02, 0.62, 0.78)
+surface = "paint_satin"
+tint = Color(0.94, 0.95, 0.96, 1)
+corner_radius = 0.01
+collide = false
+
+[node name="UnitDoorWestB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.223, 0.52, -0.35)
+script = ExtResource("2_prop")
+box_size = Vector3(0.02, 0.62, 0.78)
+surface = "paint_satin"
+tint = Color(0.94, 0.95, 0.96, 1)
+corner_radius = 0.01
+collide = false
+
+[node name="UnitDoorWestC" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.223, 0.52, 0.5)
+script = ExtResource("2_prop")
+box_size = Vector3(0.02, 0.62, 0.78)
+surface = "paint_satin"
+tint = Color(0.94, 0.95, 0.96, 1)
+corner_radius = 0.01
+collide = false
+
+[node name="UnitHandleWestA" type="Node3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -1.2, 0.74, -1.2)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.014, 0.2, 0.014)
+surface = "brushed_metal"
+collide = false
+
+[node name="UnitHandleWestB" type="Node3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -1.2, 0.74, -0.35)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.014, 0.2, 0.014)
+surface = "brushed_metal"
+collide = false
+
+[node name="UnitHandleWestC" type="Node3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -1.2, 0.74, 0.5)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.014, 0.2, 0.014)
+surface = "brushed_metal"
+collide = false
+
+[node name="UnitDoorSouthA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75, 0.52, 1.193)
+script = ExtResource("2_prop")
+box_size = Vector3(0.72, 0.62, 0.02)
+surface = "paint_satin"
+tint = Color(0.94, 0.95, 0.96, 1)
+corner_radius = 0.01
+collide = false
+
+[node name="UnitDoorSouthB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.02, 0.52, 1.193)
+script = ExtResource("2_prop")
+box_size = Vector3(0.72, 0.62, 0.02)
+surface = "paint_satin"
+tint = Color(0.94, 0.95, 0.96, 1)
+corner_radius = 0.01
+collide = false
+
+[node name="UnitHandleSouthA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75, 0.74, 1.17)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.014, 0.2, 0.014)
+surface = "brushed_metal"
+collide = false
+
+[node name="UnitHandleSouthB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.02, 0.74, 1.17)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.014, 0.2, 0.014)
+surface = "brushed_metal"
+collide = false
+
+[node name="CupboardDoorA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.543, 1.75, 0.15)
+script = ExtResource("2_prop")
+box_size = Vector3(0.02, 0.62, 0.88)
+surface = "paint_satin"
+tint = Color(0.94, 0.95, 0.96, 1)
+corner_radius = 0.01
+collide = false
+
+[node name="CupboardDoorB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.543, 1.75, 1.05)
+script = ExtResource("2_prop")
+box_size = Vector3(0.02, 0.62, 0.88)
+surface = "paint_satin"
+tint = Color(0.94, 0.95, 0.96, 1)
+corner_radius = 0.01
+collide = false
+
+[node name="CupboardHandleA" type="Node3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -1.52, 1.5, 0.15)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.014, 0.18, 0.014)
+surface = "brushed_metal"
+collide = false
+
+[node name="CupboardHandleB" type="Node3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -1.52, 1.5, 1.05)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.014, 0.18, 0.014)
+surface = "brushed_metal"
+collide = false
+
+[node name="UnderCupboardStrip" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.66, 1.38, 0.6)
+script = ExtResource("2_prop")
+box_size = Vector3(0.26, 0.024, 1.8)
+surface = "paint_satin"
+color = Color(1, 0.96, 0.88, 1)
+emissive = true
+emission_energy = 1.3
+collide = false
+
+[node name="UnderCupboardLight" type="OmniLight3D" parent="." groups=["room_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 1.34, 0.6)
+light_color = Color(1, 0.94, 0.84, 1)
+light_energy = 1.1
+light_specular = 0.2
+omni_range = 2.6
+omni_attenuation = 2.0
+
+[node name="SinkTap" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.8, 1.05, 1.2)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.036, 0.26, 0.036)
+surface = "chrome"
+collide = false
+
+[node name="SinkSpout" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.71, 1.16, 1.2)
+script = ExtResource("2_prop")
+box_size = Vector3(0.2, 0.028, 0.028)
+surface = "chrome"
+corner_radius = 0.01
+collide = false
+
+[node name="ExtractorHood" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 1.78, 1.6)
+script = ExtResource("2_prop")
+box_size = Vector3(0.62, 0.32, 0.48)
+surface = "brushed_metal"
+corner_radius = 0.012
+collide = false
+
+[node name="HoodDuct" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 2.2, 1.7)
+script = ExtResource("2_prop")
+box_size = Vector3(0.28, 0.52, 0.22)
+surface = "brushed_metal"
+collide = false
+
+[node name="ChoppingBoard" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.55, 0.962, 0.15)
+script = ExtResource("2_prop")
+box_size = Vector3(0.34, 0.03, 0.26)
+surface = "oak_wood"
+corner_radius = 0.008
+collide = false
+
+[node name="FruitBowl" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 0.995, 1.5)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.28, 0.1, 0.28)
+surface = "ceramic"
+collide = false
+
+[node name="FruitA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 1.06, 1.47)
+script = ExtResource("2_prop")
+kind = 2
+box_size = Vector3(0.09, 0.09, 0.09)
+surface = "paint_red"
+collide = false
+
+[node name="FruitB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.49, 1.055, 1.53)
+script = ExtResource("2_prop")
+kind = 2
+box_size = Vector3(0.085, 0.085, 0.085)
+surface = "foliage"
+tint = Color(1.5, 1.4, 0.7, 1)
+collide = false
+
+[node name="MugA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0.99, 1.45)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.085, 0.09, 0.085)
+surface = "ceramic"
+collide = false
+
+[node name="MugB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.44, 0.99, 1.52)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.085, 0.09, 0.085)
+surface = "ceramic"
+tint = Color(0.9, 0.95, 1.05, 1)
+collide = false
+
+[node name="TeaTowel" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 0.68, 1.2)
+script = ExtResource("2_prop")
+box_size = Vector3(0.3, 0.42, 0.03)
+surface = "linen"
+tint = Color(0.82, 0.88, 0.92, 1)
+corner_radius = 0.02
+collide = false
+
+[node name="KitchenBin" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.66, 0.3, 0.55)
+script = ExtResource("2_prop")
+kind = 1
+box_size = Vector3(0.32, 0.6, 0.32)
+surface = "brushed_metal"
+collide = false
+
+[node name="ChairNorth" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0.22, -1.34)
+script = ExtResource("2_prop")
+box_size = Vector3(0.4, 0.44, 0.4)
+surface = "oak_wood"
+corner_radius = 0.02
+collide = false
+
+[node name="ChairNorthBack" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0.66, -1.52)
+script = ExtResource("2_prop")
+box_size = Vector3(0.4, 0.46, 0.05)
+surface = "oak_wood"
+corner_radius = 0.015
+collide = false
+
+[node name="ChairEast" type="Node3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 1.14, 0.22, -0.75)
+script = ExtResource("2_prop")
+box_size = Vector3(0.4, 0.44, 0.4)
+surface = "oak_wood"
+corner_radius = 0.02
+collide = false
+
+[node name="ChairEastBack" type="Node3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 1.32, 0.66, -0.75)
+script = ExtResource("2_prop")
+box_size = Vector3(0.4, 0.46, 0.05)
+surface = "oak_wood"
+corner_radius = 0.015
+collide = false
+
+; --- Core System I: the walking route -------------------------------------
+; Finding a hazard and getting past one are different skills. These rings are
+; the second: cross the room, one ring at a time, without touching anything.
+; Some legs are deliberately NOT walkable in a straight line -- the direct path
+; goes through something -- so the task is to see that and go round. Every leg
+; was checked to have a clear path before it was placed here.
+
+[node name="Route" type="Node3D" parent="."]
+script = ExtResource("90_route")
+room = "kitchen"
+start_line = "Now move around the kitchen, ring by ring, without touching anything underfoot."
+
+[node name="Marker1" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0.0, -1.5)
+script = ExtResource("91_marker")
+marker_id = "kitchen_1"
+room = "kitchen"
+label_text = "in the doorway"
+extents = Vector3(0.7, 3, 0.7)
+
+[node name="Marker2" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0.0, -0.45)
+script = ExtResource("91_marker")
+marker_id = "kitchen_2"
+room = "kitchen"
+label_text = "by the step stool"
+extents = Vector3(0.7, 3, 0.7)
+
+[node name="Marker3" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0.0, 0.3)
+script = ExtResource("91_marker")
+marker_id = "kitchen_3"
+room = "kitchen"
+label_text = "past the open door"
+extents = Vector3(0.7, 3, 0.7)
+
+[node name="Marker4" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 0.0, 0.95)
+script = ExtResource("91_marker")
+marker_id = "kitchen_4"
+room = "kitchen"
+label_text = "at the worktop"
+extents = Vector3(0.7, 3, 0.7)
+
+[node name="Marker5" type="Area3D" parent="Route"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.9, 0.0, 0.6)
+script = ExtResource("91_marker")
+marker_id = "kitchen_5"
+room = "kitchen"
+label_text = "by the cooker"
+extents = Vector3(0.7, 3, 0.7)
+
+; --- Core System I: more hazard footprints ---------------------------------
+; Added with the walking route. These are the floor-level obstacles that had no
+; zone of their own, so walking into them was previously unrecorded. They warn
+; as the older zones do, and they give the route something to go round.
+
+[node name="SlipZoneOpenDoor" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 1.0, 0.1)
+script = ExtResource("4_slip")
+zone_id = "kitchen_door_knock"
+room = "kitchen"
+linked_hazard_path = NodePath("../HazardOpenDoor")
+warning_line = "Careful. That cupboard door is standing open across your path."
+extents = Vector3(1.0, 2, 0.7)
+route_extents = Vector3(0.62, 0.9, 0.16)

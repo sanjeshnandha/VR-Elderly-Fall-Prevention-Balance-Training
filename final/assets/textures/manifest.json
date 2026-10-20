@@ -1,0 +1,127 @@
+{
+  "asphalt": {
+    "resolution": 1024,
+    "metres": 2.0,
+    "normal_strength": 2.6
+  },
+  "brick": {
+    "resolution": 1024,
+    "metres": 1.6,
+    "normal_strength": 2.6
+  },
+  "brushed_metal": {
+    "resolution": 512,
+    "metres": 0.5,
+    "normal_strength": 0.9
+  },
+  "carpet": {
+    "resolution": 512,
+    "metres": 1.0,
+    "normal_strength": 3.2
+  },
+  "cast_iron": {
+    "resolution": 512,
+    "metres": 0.45,
+    "normal_strength": 1.6
+  },
+  "ceiling_plaster": {
+    "resolution": 512,
+    "metres": 2.5,
+    "normal_strength": 0.3
+  },
+  "exterior_render": {
+    "resolution": 512,
+    "metres": 2.5,
+    "normal_strength": 1.2
+  },
+  "grass": {
+    "resolution": 512,
+    "metres": 1.5,
+    "normal_strength": 3.0
+  },
+  "leather": {
+    "resolution": 512,
+    "metres": 0.6,
+    "normal_strength": 1.6
+  },
+  "linen": {
+    "resolution": 512,
+    "metres": 0.6,
+    "normal_strength": 1.8
+  },
+  "oak_floor": {
+    "resolution": 1024,
+    "metres": 2.0,
+    "normal_strength": 2.4
+  },
+  "oak_wood": {
+    "resolution": 512,
+    "metres": 1.0,
+    "normal_strength": 1.6
+  },
+  "paint_satin": {
+    "resolution": 512,
+    "metres": 1.0,
+    "normal_strength": 0.6
+  },
+  "paving": {
+    "resolution": 1024,
+    "metres": 1.8,
+    "normal_strength": 2.2
+  },
+  "plaster_wall": {
+    "resolution": 1024,
+    "metres": 2.5,
+    "normal_strength": 0.45
+  },
+  "quartz": {
+    "resolution": 512,
+    "metres": 1.2,
+    "normal_strength": 0.35
+  },
+  "roof_tile": {
+    "resolution": 1024,
+    "metres": 1.4,
+    "normal_strength": 2.4
+  },
+  "slate_floor": {
+    "resolution": 1024,
+    "metres": 1.6,
+    "normal_strength": 2.0
+  },
+  "subway_tile": {
+    "resolution": 512,
+    "metres": 0.8,
+    "normal_strength": 1.1
+  },
+  "tile_floor": {
+    "resolution": 1024,
+    "metres": 1.2,
+    "normal_strength": 1.4
+  },
+  "upholstery": {
+    "resolution": 512,
+    "metres": 0.5,
+    "normal_strength": 2.2
+  },
+  "wallpaper": {
+    "resolution": 1024,
+    "metres": 1.6,
+    "normal_strength": 0.6
+  },
+  "walnut_wood": {
+    "resolution": 512,
+    "metres": 1.0,
+    "normal_strength": 1.4
+  },
+  "water": {
+    "resolution": 512,
+    "metres": 0.55,
+    "normal_strength": 9.0
+  },
+  "wool_rug": {
+    "resolution": 1024,
+    "metres": 2.4,
+    "normal_strength": 2.2
+  }
+}
